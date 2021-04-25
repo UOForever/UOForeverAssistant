@@ -205,7 +205,7 @@ namespace Assistant
 
 			AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
 
-			Thread.CurrentThread.Name = "Razor Main Thread";
+			Thread.CurrentThread.Name = "Assistant Main Thread";
 			Client.Instance = new OSIClient();
 			bool shardSelected = Client.Instance.Init(true);
 			if (shardSelected)

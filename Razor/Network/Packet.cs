@@ -197,7 +197,7 @@ namespace Assistant
 							break;
 
 						case PacketPath.RazorToServer:
-							pathStr = "Razor -> Server";
+							pathStr = "Assistant -> Server";
 							break;
 
 						case PacketPath.ServerToClient:
@@ -205,7 +205,7 @@ namespace Assistant
 							break;
 
 						case PacketPath.RazorToClient:
-							pathStr = "Razor -> Client";
+							pathStr = "Assistant -> Client";
 							break;
 
 						case PacketPath.PacketVideo:

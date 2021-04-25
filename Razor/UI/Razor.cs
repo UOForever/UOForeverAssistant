@@ -7,7 +7,6 @@ using System.Drawing;
 using System.Threading;
 using System.Windows.Forms;
 using System.Diagnostics;
-using AutoUpdaterDotNET;
 using System.IO;
 using JsonData;
 
@@ -102,6 +101,7 @@ namespace Assistant
         private RazorButton buttonScriptEditor;
         private Label labelStatus;
         private RazorButton razorButtonWiki;
+        private RazorButton razorButtonPortal;
         private List<RazorEnhanced.Organizer.OrganizerItem> organizerItemList = new List<RazorEnhanced.Organizer.OrganizerItem>();
         private List<RazorEnhanced.SellAgent.SellAgentItem> sellItemList = new List<RazorEnhanced.SellAgent.SellAgentItem>();
         private List<RazorEnhanced.BuyAgent.BuyAgentItem> buyItemList = new List<RazorEnhanced.BuyAgent.BuyAgentItem>();
@@ -445,7 +445,7 @@ namespace Assistant
         private RazorCheckBox uomodFPSCheckBox;
         private RazorCheckBox uomodpaperdollCheckBox;
         private RazorCheckBox uomodglobalsoundCheckBox;
-        private Label labelHotride;
+        private Label labelRazorThanks;
         private RazorAgentNumOnlyTextBox bandagehealmaxrangeTextBox;
         private Label label46;
         private RazorAgentNumOnlyTextBox bandagehealdelayTextBox;
@@ -630,7 +630,6 @@ namespace Assistant
         private RazorButton targetChoseBody;
         private RazorCheckBox bandagehealAutostartCheckBox;
         private RazorCheckBox bandagehealusetarget;
-        private RazorButton paypalButton;
         private RazorCheckBox bandagehealusetext;
         private RazorTextBox bandagehealusetextSelfContent;
         private RazorTextBox bandagehealusetextContent;
@@ -735,7 +734,6 @@ namespace Assistant
             this.tabs = new System.Windows.Forms.TabControl();
             this.generalTab = new System.Windows.Forms.TabPage();
             this.label79 = new System.Windows.Forms.Label();
-            this.paypalButton = new RazorEnhanced.UI.RazorButton();
             this.openchangelogButton = new RazorEnhanced.UI.RazorButton();
             this.notshowlauncher = new RazorEnhanced.UI.RazorCheckBox();
             this.groupBox29 = new System.Windows.Forms.GroupBox();
@@ -1358,13 +1356,11 @@ namespace Assistant
             this.DPSMeterStartButton = new RazorEnhanced.UI.RazorButton();
             this.DPSMeterClearButton = new RazorEnhanced.UI.RazorButton();
             this.statusTab = new System.Windows.Forms.TabPage();
-            this.advertisementLink = new RazorEnhanced.UI.RazorButton();
-            this.advertisement = new System.Windows.Forms.PictureBox();
-            this.label71 = new System.Windows.Forms.Label();
-            this.labelHotride = new System.Windows.Forms.Label();
+            this.labelRazorThanks = new System.Windows.Forms.Label();
             this.labelStatus = new System.Windows.Forms.Label();
             this.discordrazorButton = new RazorEnhanced.UI.RazorButton();
             this.razorButtonWiki = new RazorEnhanced.UI.RazorButton();
+            this.razorButtonPortal = new RazorEnhanced.UI.RazorButton();
             this.m_NotifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
             this.openFileDialogscript = new System.Windows.Forms.OpenFileDialog();
             this.timerupdatestatus = new System.Windows.Forms.Timer(this.components);
@@ -1487,7 +1483,6 @@ namespace Assistant
             this.filtergroup.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.DpsMeterGridView)).BeginInit();
             this.statusTab.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.advertisement)).BeginInit();
             this.datagridMenuStrip.SuspendLayout();
             this.scriptgridMenuStrip.SuspendLayout();
             this.SuspendLayout();
@@ -1522,7 +1517,6 @@ namespace Assistant
             // generalTab
             //
             this.generalTab.Controls.Add(this.label79);
-            this.generalTab.Controls.Add(this.paypalButton);
             this.generalTab.Controls.Add(this.openchangelogButton);
             this.generalTab.Controls.Add(this.notshowlauncher);
             this.generalTab.Controls.Add(this.groupBox29);
@@ -1554,20 +1548,6 @@ namespace Assistant
             this.label79.Size = new System.Drawing.Size(20, 20);
             this.label79.TabIndex = 70;
             this.label79.Text = "X";
-            //
-            // paypalButton
-            //
-            this.paypalButton.BackColor = System.Drawing.SystemColors.Control;
-            this.paypalButton.BackgroundImage = global::Assistant.Properties.Resources.PayPal;
-            this.paypalButton.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.paypalButton.FlatAppearance.BorderSize = 0;
-            this.paypalButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.paypalButton.Location = new System.Drawing.Point(867, 77);
-            this.paypalButton.Name = "paypalButton";
-            this.paypalButton.Size = new System.Drawing.Size(152, 49);
-            this.paypalButton.TabIndex = 69;
-            this.paypalButton.UseVisualStyleBackColor = false;
-            this.paypalButton.Click += new System.EventHandler(this.paypalButton_Click);
             //
             // openchangelogButton
             //
@@ -2006,7 +1986,7 @@ namespace Assistant
             this.label17.Name = "label17";
             this.label17.Size = new System.Drawing.Size(147, 27);
             this.label17.TabIndex = 68;
-            this.label17.Text = "Razor messages:";
+            this.label17.Text = "Assistant messages:";
             //
             // lblHarmHue
             //
@@ -2054,7 +2034,7 @@ namespace Assistant
             this.lblMsgHue.Name = "lblMsgHue";
             this.lblMsgHue.Size = new System.Drawing.Size(223, 25);
             this.lblMsgHue.TabIndex = 15;
-            this.lblMsgHue.Text = "Razor Message Hue";
+            this.lblMsgHue.Text = "Assistant Message Hue";
             //
             // label3
             //
@@ -8160,59 +8140,25 @@ namespace Assistant
             //
             // statusTab
             //
-            this.statusTab.Controls.Add(this.advertisementLink);
-            this.statusTab.Controls.Add(this.advertisement);
-            this.statusTab.Controls.Add(this.label71);
-            this.statusTab.Controls.Add(this.labelHotride);
+            this.statusTab.Controls.Add(this.labelRazorThanks);
             this.statusTab.Controls.Add(this.labelStatus);
             this.statusTab.Controls.Add(this.discordrazorButton);
             this.statusTab.Controls.Add(this.razorButtonWiki);
+            this.statusTab.Controls.Add(this.razorButtonPortal);
             this.statusTab.Location = new System.Drawing.Point(4, 54);
             this.statusTab.Name = "statusTab";
             this.statusTab.Size = new System.Drawing.Size(1068, 536);
             this.statusTab.TabIndex = 9;
             this.statusTab.Text = "Help / Status";
             //
-            // advertisementLink
-            //
-            this.advertisementLink.Location = new System.Drawing.Point(544, 351);
-            this.advertisementLink.Name = "advertisementLink";
-            this.advertisementLink.Size = new System.Drawing.Size(192, 54);
-            this.advertisementLink.TabIndex = 12;
-            this.advertisementLink.Text = "Eventine";
-            this.advertisementLink.UseVisualStyleBackColor = true;
-            this.advertisementLink.Click += new System.EventHandler(this.advertisement_Click);
-            //
-            // advertisement
-            //
-            this.advertisement.Image = ((System.Drawing.Image)(resources.GetObject("advertisement.Image")));
-            this.advertisement.InitialImage = ((System.Drawing.Image)(resources.GetObject("advertisement.InitialImage")));
-            this.advertisement.Location = new System.Drawing.Point(5, 4);
-            this.advertisement.Name = "advertisement";
-            this.advertisement.Size = new System.Drawing.Size(758, 338);
-            this.advertisement.SizeMode = System.Windows.Forms.PictureBoxSizeMode.CenterImage;
-            this.advertisement.TabIndex = 11;
-            this.advertisement.TabStop = false;
-            //
-            // label71
-            //
-            this.label71.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label71.Location = new System.Drawing.Point(13, 472);
-            this.label71.Name = "label71";
-            this.label71.Size = new System.Drawing.Size(1040, 56);
-            this.label71.TabIndex = 10;
-            this.label71.Text = "Many thanks also for developer of UO.DLL and ULTIMA.DLL";
-            //
             // labelHotride
             //
-            this.labelHotride.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.labelHotride.Location = new System.Drawing.Point(13, 425);
-            this.labelHotride.Name = "labelHotride";
-            this.labelHotride.Size = new System.Drawing.Size(1040, 56);
-            this.labelHotride.TabIndex = 8;
-            this.labelHotride.Text = "Many thanks to Hotride for his  FPS multiclient patch! Hotride is the author of O" +
-    "penGL OrionUO Client project (you can point your browser to the link http://foru" +
-    "m.orion-client.online for more info)";
+            this.labelRazorThanks.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.labelRazorThanks.Location = new System.Drawing.Point(13, 425);
+            this.labelRazorThanks.Name = "labelRazorThanks";
+            this.labelRazorThanks.Size = new System.Drawing.Size(1040, 56);
+            this.labelRazorThanks.TabIndex = 8;
+            this.labelRazorThanks.Text = "UOForever's official assistant is a modified version of Razor Enhanced, which is a modified version of Razor. Our deepest graditude to all of the previous developers who made this possible. Thank you!";
             //
             // labelStatus
             //
@@ -8228,7 +8174,7 @@ namespace Assistant
             this.discordrazorButton.Name = "discordrazorButton";
             this.discordrazorButton.Size = new System.Drawing.Size(216, 54);
             this.discordrazorButton.TabIndex = 9;
-            this.discordrazorButton.Text = "Razor Enhanced Discord";
+            this.discordrazorButton.Text = "Discord";
             this.discordrazorButton.UseVisualStyleBackColor = true;
             this.discordrazorButton.Click += new System.EventHandler(this.discordrazorButton_Click);
             //
@@ -8238,14 +8184,24 @@ namespace Assistant
             this.razorButtonWiki.Name = "razorButtonWiki";
             this.razorButtonWiki.Size = new System.Drawing.Size(232, 54);
             this.razorButtonWiki.TabIndex = 6;
-            this.razorButtonWiki.Text = "Razor Enhanced wiki";
+            this.razorButtonWiki.Text = "Wiki";
             this.razorButtonWiki.UseVisualStyleBackColor = true;
             this.razorButtonWiki.Click += new System.EventHandler(this.razorButtonWiki_Click);
+            //
+            // razorButtonPortal
+            //
+            this.razorButtonPortal.Location = new System.Drawing.Point(535, 351);
+            this.razorButtonPortal.Name = "razorButtonPortal";
+            this.razorButtonPortal.Size = new System.Drawing.Size(232, 54);
+            this.razorButtonPortal.TabIndex = 10;
+            this.razorButtonPortal.Text = "Portal";
+            this.razorButtonPortal.UseVisualStyleBackColor = true;
+            this.razorButtonPortal.Click += new System.EventHandler(this.razorButtonPortal_Click);
             //
             // m_NotifyIcon
             //
             this.m_NotifyIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("m_NotifyIcon.Icon")));
-            this.m_NotifyIcon.Text = "Razor Enhanced";
+            this.m_NotifyIcon.Text = "UOForever Assistant";
             this.m_NotifyIcon.DoubleClick += new System.EventHandler(this.NotifyIcon_DoubleClick);
             //
             // openFileDialogscript
@@ -8404,7 +8360,7 @@ namespace Assistant
             this.MaximizeBox = false;
             this.Name = "MainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
-            this.Text = "Razor Enhanced {0}";
+            this.Text = "UOForever Assistant {0}";
             this.Activated += new System.EventHandler(this.MainForm_Activated);
             this.Closing += new System.ComponentModel.CancelEventHandler(this.MainForm_Closing);
             this.Deactivate += new System.EventHandler(this.MainForm_Deactivate);
@@ -8559,7 +8515,6 @@ namespace Assistant
             this.filtergroup.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.DpsMeterGridView)).EndInit();
             this.statusTab.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.advertisement)).EndInit();
             this.datagridMenuStrip.ResumeLayout(false);
             this.scriptgridMenuStrip.ResumeLayout(false);
             this.ResumeLayout(false);
@@ -8632,56 +8587,6 @@ namespace Assistant
             m_Tip.Active = true;
             //SplashScreen.End();
 
-            // AutoUpdater
-            AutoUpdater.ShowSkipButton = false;
-            AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
-            AutoUpdater.ReportErrors = true;
-            AutoUpdater.Start("http://www.razorenhanced.net/download/RazorAutoUpdater.xml");
-        }
-
-        private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)
-        {
-            if (Client.IsOSI)
-            {
-                if (args != null)
-                {
-                    if (args.IsUpdateAvailable)
-                    {
-                        DialogResult dialogResult;
-
-                        dialogResult =
-                            MessageBox.Show(
-                                $@"There is new version {args.CurrentVersion} available. You are using version {
-                                        args.InstalledVersion
-                                    }. Do you want to update the application now?", @"Update Available",
-                                MessageBoxButtons.YesNo,
-                                MessageBoxIcon.Information);
-
-                        if (dialogResult.Equals(DialogResult.Yes))
-                        {
-                            try
-                            {
-                                if (AutoUpdater.DownloadUpdate())
-                                {
-                                    Application.Exit();
-                                    Thread.Sleep(2000); // attesa uscita
-                                }
-                            }
-                            catch (Exception exception)
-                            {
-                                MessageBox.Show(exception.Message, exception.GetType().ToString(), MessageBoxButtons.OK,
-                                    MessageBoxIcon.Error);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    MessageBox.Show(
-                            @"There is a problem reaching update server please check your internet connection and try again later.",
-                            @"Update check failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
         }
 
 
@@ -9064,7 +8969,7 @@ namespace Assistant
         {
             string str = Language.GetControlText(this.Name);
             if (str == null || str == String.Empty)
-                str = "Razor Enhanced {0}";
+                str = "UOForever Assistant {0}";
 
             str = String.Format(str, Engine.Version);
             if (World.Player != null)
@@ -9080,9 +8985,9 @@ namespace Assistant
             if (m_NotifyIcon != null && m_NotifyIcon.Visible)
             {
                 if (World.Player != null)
-                    m_NotifyIcon.Text = String.Format("Razor Enhanced - {0} ({1})", World.Player.Name, World.ShardName);
+                    m_NotifyIcon.Text = String.Format("UOForever Assistant - {0} ({1})", World.Player.Name, World.ShardName);
                 else
-                    m_NotifyIcon.Text = "Razor Enhanced";
+                    m_NotifyIcon.Text = "UOForever Assistant";
             }
         }
 
@@ -9129,28 +9034,27 @@ namespace Assistant
 
         private void razorButtonWiki_Click(object sender, EventArgs e)
         {
-            ProcessStartInfo p = new ProcessStartInfo("http://www.razorenhanced.net/dokuwiki");
+            ProcessStartInfo p = new ProcessStartInfo("http://wiki.uoforever.com");
             try
             {
                 Process.Start(p);
             }
             catch { }
         }
-
-        private void advertisement_Click(object sender, EventArgs e)
+        
+        private void razorButtonPortal_Click(object sender, EventArgs e)
         {
-            ProcessStartInfo p = new ProcessStartInfo("https://www.uoeventine.com/");
+            ProcessStartInfo p = new ProcessStartInfo("https://portal.uoforever.com");
             try
             {
                 Process.Start(p);
             }
             catch { }
         }
-
 
         private void discordrazorButton_Click(object sender, EventArgs e)
         {
-            ProcessStartInfo p = new ProcessStartInfo("https://discord.gg/P3Q7mKT");
+            ProcessStartInfo p = new ProcessStartInfo("http://discord.uoforever.com");
             try
             {
                 Process.Start(p);
