@@ -271,6 +271,7 @@ namespace Assistant
         private Label label5;
         private Label label6;
         private RazorCheckBox smartLT;
+        private RazorCheckBox noSelfLT;
         private RazorCheckBox rangeCheckLT;
         private RazorTextBox ltRange;
         private Label label8;
@@ -481,7 +482,6 @@ namespace Assistant
         private Label label61;
         private RazorAgentNumOnlyTextBox scavengerRange;
         private RazorCheckBox hiddedAutoOpenDoors;
-        private RazorCheckBox uo3dEquipUnEquip;
         private RazorCheckBox nosearchpouches;
         private RazorCheckBox autosearchcontainers;
         private TabPage videoTab;
@@ -638,7 +638,7 @@ namespace Assistant
         private RazorButton advertisementLink;
         private PictureBox advertisement;
         private RazorCheckBox allowHiddenLooting;
-        private RazorCheckBox druidClericPackets;
+        //private RazorCheckBox druidClericPackets;
         private RazorCheckBox buyCompareNameCheckBox;
         private RazorCheckBox showtitheToolBarCheckBox;
         private Label label79;
@@ -761,7 +761,6 @@ namespace Assistant
             this.opacityLabel = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
             this.moreOptTab = new System.Windows.Forms.TabPage();
-            this.druidClericPackets = new RazorEnhanced.UI.RazorCheckBox();
             this.allowHiddenLooting = new RazorEnhanced.UI.RazorCheckBox();
             this.filterNPC = new RazorEnhanced.UI.RazorCheckBox();
             this.groupBox17 = new System.Windows.Forms.GroupBox();
@@ -784,7 +783,6 @@ namespace Assistant
             this.chknorunStealth = new RazorEnhanced.UI.RazorCheckBox();
             this.nosearchpouches = new RazorEnhanced.UI.RazorCheckBox();
             this.autosearchcontainers = new RazorEnhanced.UI.RazorCheckBox();
-            this.uo3dEquipUnEquip = new RazorEnhanced.UI.RazorCheckBox();
             this.hiddedAutoOpenDoors = new RazorEnhanced.UI.RazorCheckBox();
             this.chkPartyOverhead = new RazorEnhanced.UI.RazorCheckBox();
             this.healthFmt = new RazorEnhanced.UI.RazorTextBox();
@@ -793,6 +791,7 @@ namespace Assistant
             this.ltRange = new RazorEnhanced.UI.RazorTextBox();
             this.rangeCheckLT = new RazorEnhanced.UI.RazorCheckBox();
             this.smartLT = new RazorEnhanced.UI.RazorCheckBox();
+            this.noSelfLT = new RazorEnhanced.UI.RazorCheckBox();
             this.txtObjDelay = new RazorEnhanced.UI.RazorTextBox();
             this.QueueActions = new RazorEnhanced.UI.RazorCheckBox();
             this.actionStatusMsg = new RazorEnhanced.UI.RazorCheckBox();
@@ -1815,7 +1814,6 @@ namespace Assistant
             //
             // moreOptTab
             //
-            this.moreOptTab.Controls.Add(this.druidClericPackets);
             this.moreOptTab.Controls.Add(this.allowHiddenLooting);
             this.moreOptTab.Controls.Add(this.filterNPC);
             this.moreOptTab.Controls.Add(this.groupBox17);
@@ -1835,7 +1833,6 @@ namespace Assistant
             this.moreOptTab.Controls.Add(this.chknorunStealth);
             this.moreOptTab.Controls.Add(this.nosearchpouches);
             this.moreOptTab.Controls.Add(this.autosearchcontainers);
-            this.moreOptTab.Controls.Add(this.uo3dEquipUnEquip);
             this.moreOptTab.Controls.Add(this.hiddedAutoOpenDoors);
             this.moreOptTab.Controls.Add(this.chkPartyOverhead);
             this.moreOptTab.Controls.Add(this.healthFmt);
@@ -1844,6 +1841,7 @@ namespace Assistant
             this.moreOptTab.Controls.Add(this.ltRange);
             this.moreOptTab.Controls.Add(this.rangeCheckLT);
             this.moreOptTab.Controls.Add(this.smartLT);
+            this.moreOptTab.Controls.Add(this.noSelfLT);
             this.moreOptTab.Controls.Add(this.txtObjDelay);
             this.moreOptTab.Controls.Add(this.QueueActions);
             this.moreOptTab.Controls.Add(this.actionStatusMsg);
@@ -1878,17 +1876,6 @@ namespace Assistant
             this.moreOptTab.Size = new System.Drawing.Size(1068, 536);
             this.moreOptTab.TabIndex = 5;
             this.moreOptTab.Text = "Options";
-            //
-            // druidClericPackets
-            //
-            this.druidClericPackets.AutoSize = true;
-            this.druidClericPackets.Location = new System.Drawing.Point(698, 481);
-            this.druidClericPackets.Name = "druidClericPackets";
-            this.druidClericPackets.Size = new System.Drawing.Size(276, 24);
-            this.druidClericPackets.TabIndex = 83;
-            this.druidClericPackets.Text = "Use packets for Druid/Cleric spells";
-            this.druidClericPackets.UseVisualStyleBackColor = true;
-            this.druidClericPackets.CheckedChanged += new System.EventHandler(this.druidClericPackets_CheckedChanged);
             //
             // allowHiddenLooting
             //
@@ -1950,7 +1937,7 @@ namespace Assistant
             //
             // label10
             //
-            this.label10.Location = new System.Drawing.Point(725, 269);
+            this.label10.Location = new System.Drawing.Point(725, 296);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(128, 25);
             this.label10.TabIndex = 73;
@@ -1958,7 +1945,7 @@ namespace Assistant
             //
             // label8
             //
-            this.label8.Location = new System.Drawing.Point(723, 174);
+            this.label8.Location = new System.Drawing.Point(723, 201);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(59, 26);
             this.label8.TabIndex = 72;
@@ -2064,7 +2051,7 @@ namespace Assistant
             //
             // nosearchpouches
             //
-            this.nosearchpouches.Location = new System.Drawing.Point(728, 447);
+            this.nosearchpouches.Location = new System.Drawing.Point(728, 420);
             this.nosearchpouches.Name = "nosearchpouches";
             this.nosearchpouches.Size = new System.Drawing.Size(296, 32);
             this.nosearchpouches.TabIndex = 77;
@@ -2073,7 +2060,7 @@ namespace Assistant
             //
             // autosearchcontainers
             //
-            this.autosearchcontainers.Location = new System.Drawing.Point(698, 417);
+            this.autosearchcontainers.Location = new System.Drawing.Point(698, 390);
             this.autosearchcontainers.Name = "autosearchcontainers";
             this.autosearchcontainers.Size = new System.Drawing.Size(342, 32);
             this.autosearchcontainers.TabIndex = 76;
@@ -2082,12 +2069,12 @@ namespace Assistant
             //
             // uo3dEquipUnEquip
             //
-            this.uo3dEquipUnEquip.Location = new System.Drawing.Point(698, 386);
+            /*this.uo3dEquipUnEquip.Location = new System.Drawing.Point(698, 386);
             this.uo3dEquipUnEquip.Name = "uo3dEquipUnEquip";
             this.uo3dEquipUnEquip.Size = new System.Drawing.Size(342, 32);
             this.uo3dEquipUnEquip.TabIndex = 75;
             this.uo3dEquipUnEquip.Text = "Use UO3D Equip and UnEquip";
-            this.uo3dEquipUnEquip.CheckedChanged += new System.EventHandler(this.uo3dEquipUnEquip_CheckedChanged);
+            this.uo3dEquipUnEquip.CheckedChanged += new System.EventHandler(this.uo3dEquipUnEquip_CheckedChanged);*/
             //
             // hiddedAutoOpenDoors
             //
@@ -2100,7 +2087,7 @@ namespace Assistant
             //
             // chkPartyOverhead
             //
-            this.chkPartyOverhead.Location = new System.Drawing.Point(698, 295);
+            this.chkPartyOverhead.Location = new System.Drawing.Point(698, 325);
             this.chkPartyOverhead.Name = "chkPartyOverhead";
             this.chkPartyOverhead.Size = new System.Drawing.Size(361, 31);
             this.chkPartyOverhead.TabIndex = 72;
@@ -2114,7 +2101,7 @@ namespace Assistant
             | System.Windows.Forms.AnchorStyles.Right)));
             this.healthFmt.BackColor = System.Drawing.Color.White;
             this.healthFmt.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.healthFmt.Location = new System.Drawing.Point(859, 265);
+            this.healthFmt.Location = new System.Drawing.Point(859, 292);
             this.healthFmt.Name = "healthFmt";
             this.healthFmt.Size = new System.Drawing.Size(179, 26);
             this.healthFmt.TabIndex = 71;
@@ -2122,7 +2109,7 @@ namespace Assistant
             //
             // showHealthOH
             //
-            this.showHealthOH.Location = new System.Drawing.Point(698, 232);
+            this.showHealthOH.Location = new System.Drawing.Point(698, 259);
             this.showHealthOH.Name = "showHealthOH";
             this.showHealthOH.Size = new System.Drawing.Size(355, 33);
             this.showHealthOH.TabIndex = 69;
@@ -2131,7 +2118,7 @@ namespace Assistant
             //
             // showtargtext
             //
-            this.showtargtext.Location = new System.Drawing.Point(698, 202);
+            this.showtargtext.Location = new System.Drawing.Point(698, 229);
             this.showtargtext.Name = "showtargtext";
             this.showtargtext.Size = new System.Drawing.Size(304, 32);
             this.showtargtext.TabIndex = 53;
@@ -2145,7 +2132,7 @@ namespace Assistant
             | System.Windows.Forms.AnchorStyles.Right)));
             this.ltRange.BackColor = System.Drawing.Color.White;
             this.ltRange.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.ltRange.Location = new System.Drawing.Point(786, 171);
+            this.ltRange.Location = new System.Drawing.Point(786, 198);
             this.ltRange.Name = "ltRange";
             this.ltRange.Size = new System.Drawing.Size(33, 26);
             this.ltRange.TabIndex = 41;
@@ -2153,7 +2140,7 @@ namespace Assistant
             //
             // rangeCheckLT
             //
-            this.rangeCheckLT.Location = new System.Drawing.Point(698, 137);
+            this.rangeCheckLT.Location = new System.Drawing.Point(698, 164);
             this.rangeCheckLT.Name = "rangeCheckLT";
             this.rangeCheckLT.Size = new System.Drawing.Size(296, 33);
             this.rangeCheckLT.TabIndex = 40;
@@ -2168,6 +2155,16 @@ namespace Assistant
             this.smartLT.TabIndex = 52;
             this.smartLT.Text = "Use smart last target";
             this.smartLT.CheckedChanged += new System.EventHandler(this.smartLT_CheckedChanged);
+            
+            //
+            // noSelfLT
+            //
+            this.noSelfLT.Location = new System.Drawing.Point(698, 137);
+            this.noSelfLT.Name = "noSelfLT";
+            this.noSelfLT.Size = new System.Drawing.Size(296, 32);
+            this.noSelfLT.TabIndex = 52;
+            this.noSelfLT.Text = "Do not set self as last target";
+            this.noSelfLT.CheckedChanged += new System.EventHandler(this.noSelfLT_CheckedChanged);
             //
             // txtObjDelay
             //
@@ -8716,6 +8713,7 @@ namespace Assistant
             QueueActions.Checked = RazorEnhanced.Settings.General.ReadBool("QueueActions");
             txtObjDelay.Text = RazorEnhanced.Settings.General.ReadInt("ObjectDelay").ToString();
             smartLT.Checked = RazorEnhanced.Settings.General.ReadBool("SmartLastTarget");
+            smartLT.Checked = RazorEnhanced.Settings.General.ReadBool("NoSelfLastTarget");
             ltRange.Enabled = rangeCheckLT.Checked = RazorEnhanced.Settings.General.ReadBool("RangeCheckLT");
             ltRange.Text = RazorEnhanced.Settings.General.ReadInt("LTRange").ToString();
             showtargtext.Checked = RazorEnhanced.Settings.General.ReadBool("LastTargTextFlags");
@@ -8742,10 +8740,8 @@ namespace Assistant
             hiddedAutoOpenDoors.Checked = RazorEnhanced.Settings.General.ReadBool("HiddedAutoOpenDoors");
             spellUnequip.Checked = RazorEnhanced.Settings.General.ReadBool("SpellUnequip");
             potionEquip.Checked = RazorEnhanced.Settings.General.ReadBool("PotionEquip");
-            uo3dEquipUnEquip.Checked = RazorEnhanced.Settings.General.ReadBool("UO3dEquipUnEquip");
             autosearchcontainers.Checked = RazorEnhanced.Settings.General.ReadBool("AutoSearch");
             nosearchpouches.Checked = RazorEnhanced.Settings.General.ReadBool("NoSearchPouches");
-            druidClericPackets.Checked = RazorEnhanced.Settings.General.ReadBool("DruidClericPackets");
             chknorunStealth.Checked = RazorEnhanced.Settings.General.ReadBool("ChkNoRunStealth");
             enhancedmappathTextBox.Text = Settings.General.ReadString("EnhancedMapPath");
 

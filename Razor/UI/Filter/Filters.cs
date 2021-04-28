@@ -23,6 +23,8 @@ namespace Assistant
 		internal RazorCheckBox ShowMobNames { get { return incomingMob; } }
 		internal RazorCheckBox LastTargTextFlags { get { return showtargtext; } }
 		internal RazorCheckBox SmartLastTarget { get { return smartLT; } }
+		
+		internal RazorCheckBox NoSelfLastTarget { get { return noSelfLT; } }
 
 		// Colori override
 		internal int SysColor = 0;
@@ -225,13 +227,6 @@ namespace Assistant
 				RazorEnhanced.Settings.General.WriteBool("CountStealthSteps", chkStealth.Checked);
 		}
 
-        private void druidClericPackets_CheckedChanged(object sender, System.EventArgs e)
-        {
-            if (druidClericPackets.Focused)
-                RazorEnhanced.Settings.General.WriteBool("DruidClericPackets", druidClericPackets.Checked);
-        }
-
-
         private void setpathmapbutton_Click(object sender, EventArgs e)
 		{
 			openmaplocation.RestoreDirectory = true;
@@ -320,6 +315,12 @@ namespace Assistant
 		{
 			if (smartLT.Focused)
 				RazorEnhanced.Settings.General.WriteBool("SmartLastTarget", smartLT.Checked);
+		}
+		
+		private void noSelfLT_CheckedChanged(object sender, System.EventArgs e)
+		{
+			if (smartLT.Focused)
+				RazorEnhanced.Settings.General.WriteBool("NoSelfLastTarget`", noSelfLT.Checked);
 		}
 
 		private void showtargtext_CheckedChanged(object sender, System.EventArgs e)
@@ -443,11 +444,6 @@ namespace Assistant
 				RazorEnhanced.Settings.General.WriteBool("PotionEquip", potionEquip.Checked);
 		}
 
-		private void uo3dEquipUnEquip_CheckedChanged(object sender, EventArgs e)
-		{
-			if (uo3dEquipUnEquip.Focused)
-				RazorEnhanced.Settings.General.WriteBool("UO3DEquipUnEquip", uo3dEquipUnEquip.Checked);
-		}
 
 		private void chknorunStealth_CheckedChanged(object sender, EventArgs e)
 		{

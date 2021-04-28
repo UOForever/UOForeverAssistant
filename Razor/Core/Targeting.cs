@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using RazorEnhanced;
 
 namespace Assistant
 {
@@ -205,7 +206,7 @@ namespace Assistant
 
 		internal static void SetLastTarget(Serial s, byte flagType, bool wait)
 		{
-			if (m_LastTarget != null && s == Serial.Zero && m_LastTarget.Serial == s) // Non settare last se gi‡ il serial corrente
+			if (m_LastTarget != null && s == Serial.Zero && m_LastTarget.Serial == s) // Non settare last se gi√† il serial corrente
 				return;
 
 			TargetInfo targ = new TargetInfo();
@@ -581,7 +582,9 @@ namespace Assistant
 			else if (m_HasTarget)
 			{
 				info.TargID = m_CurrentID;
-				m_LastGroundTarg = m_LastTarget = info;
+				bool noSelf = Engine.MainWindow.NoSelfLastTarget.Checked;
+				if (!noSelf || info.Serial != Player.Serial)
+					m_LastGroundTarg = m_LastTarget = info;
 				if (wait)
 			 		Assistant.Client.Instance.SendToServerWait(new TargetResponse(info));
 				else
