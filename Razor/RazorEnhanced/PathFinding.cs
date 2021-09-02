@@ -8,15 +8,27 @@ namespace RazorEnhanced
 {
 
     // Pathfind Core
+
+    /// <summary>
+    /// Class representing an (X,Y) coordinate. Optimized for pathfinding tasks.
+    /// </summary>
     public class Tile
     {
+        /// <summary>
+        /// Create a Tile starting from X,Y coordinates (see PathFindig.GetPath)
+        /// </summary>
+        /// <param name="x">X coordinate</param>
+        /// <param name="y">Y coordinate</param>
+        /// <returns>Returns a Tile object</returns>
         public Tile(int x, int y)
         {
             X = x;
             Y = y;
         }
 
+        /// <summary>Coordinate X.</summary>
         public int X { get; set; }
+        /// <summary>Coordinate Y.</summary>
         public int Y { get; set; }
 
         public override bool Equals(Object obj)
@@ -47,6 +59,7 @@ namespace RazorEnhanced
         /// <param name="x">X coordinate of same map</param>
         /// <param name="y">Y coordinate of same map</param>
         /// <param name="scanMaxRange">Max range to scan a path (x, y) should be included in this max range</param>
+        /// <param name="ignoremob">consider mobs as obsticles or not</param>
         /// <returns></returns>
         public static List<Tile> GetPath(int x, int y, int scanMaxRange, bool ignoremob)
         {
@@ -87,6 +100,7 @@ namespace RazorEnhanced
         /// </summary>
         /// <param name="x">X coordinate of same map</param>
         /// <param name="y">Y coordinate of same map</param>
+        /// <param name="ignoremob">consider mobs as obsticles or not</param>
         /// <returns></returns>
         public static List<Tile> GetPath(int x, int y, bool ignoremob)
         {
@@ -156,7 +170,7 @@ namespace RazorEnhanced
         {
             int xForward = b.X, yForward = b.Y;
             var items = World.Items.Values.Where(x => x.OnGround);
-            var newZ = 0;
+            int newZ = 0;
             GetStartZ(loc, map, items.Where(x => x.Position.X == loc.X && x.Position.Y == loc.Y), out var startZ, out var startTop);
             var moveIsOk = Check(map, items.Where(x => x.Position.X == xForward && x.Position.Y == yForward), xForward, yForward, startTop, startZ, ignoremob, out newZ);
 
@@ -778,30 +792,63 @@ namespace RazorEnhanced
         }
     }
 
+    /// <summary>
+    /// This class implements the PathFinding algorithm using A-Star. 
+    /// </summary>
     public class PathFinding
     {
+        /// <summary>
+        /// The Route class is used to configure the PathFinding.
+        /// </summary>
         public class Route
         {
+            /// <summary>
+            /// Create an empty Route object.
+            /// </summary>
+            public Route() { }
+
+            /// <summary>Sets the destination position X. (default: 0)</summary>
             public int X = 0;
+
+            /// <summary>Sets the destination position Y. (default: 0)</summary>
             public int Y = 0;
+
+            /// <summary>Outputs a debug message. (default: False)</summary>
             public bool DebugMessage = false;
+
+            /// <summary>Halts the pathfinding fail to walk the path. (default: 0)</summary>
             public bool StopIfStuck = false;
+
+            /// <summary>Ignores any mobiles with the path calculation. (default: 0)</summary>
             public bool IgnoreMobile = false;
+
+            /// <summary>ReSyncs the path calculation. (default: False)</summary>
             public bool UseResync = false;
+
+            /// <summary>Number of attempts untill the path calculation is halted. (default: -1, no limit)</summary>
             public int MaxRetry = -1;
+
+            /// <summary>Maximum amount of time to run the path. (default: -1, no limit)</summary>
             public float Timeout = -1;
 
-            public Route()
-            {
-            }
+            
         }
 
-
-        // Dalamar: Exposed "RazorEnhanced.Tile" to Python via Pathfind in order to be able to create List[Tile] to feed directly to
+        /// <summary>
+        /// Create a Tile starting from X,Y coordinates (see PathFindig.RunPath)
+        /// </summary>
+        /// <param name="x">X coordinate</param>
+        /// <param name="y">Y coordinate</param>
+        /// <returns>Returns a Tile object</returns>
         public static Tile Tile(int x, int y){
             return new Tile(x,y);
         }
 
+        /// <summary>
+        /// Check if a destination is reachable.
+        /// </summary>
+        /// <param name="r">A customized Route object.</param>
+        /// <returns>True: if a destination is reachable.</returns>
         public static bool Go(Route r)
         {
             if ( r.StopIfStuck ) { r.MaxRetry = 1; }
@@ -824,10 +871,25 @@ namespace RazorEnhanced
             return false;
         }
 
-        public static List<Tile> GetPath(int x, int y, bool ignoremob) {
-            return PathMove.GetPath(x, y, ignoremob);
+        /// <summary>
+        /// Compute the path for the given destination and returns a list of Tile (coordinates).
+        /// </summary>
+        /// <param name="dst_x">Destination X.</param>
+        /// <param name="dst_y">Destination Y.</param>
+        /// <param name="ignoremob">Ignores any mobiles with the path calculation.</param>
+        /// <returns>List of Tile objects, each holds a .X and .Y coordinates.</returns>
+        public static List<Tile> GetPath(int dst_x, int dst_y, bool ignoremob) {
+            return PathMove.GetPath(dst_x, dst_y, ignoremob);
         }
 
+        /// <summary>
+        /// Run a given path, represented as list of Tile (see PathFindig.GetPath).
+        /// </summary>
+        /// <param name="path">List of coordinates as Tile objects.</param>
+        /// <param name="timeout">Maximum amount of time to run the path. (default: -1, no limit)</param>
+        /// <param name="debugMessage">Outputs a debug message.</param>
+        /// <param name="useResync">ReSyncs the path calculation.</param>
+        /// <returns>True: if it finish the path in time. False: otherwise</returns>
         public static bool RunPath(List<Tile> path, float timeout=-1, bool debugMessage=false, bool useResync = true)
         {
             if (path == null) { return false; }

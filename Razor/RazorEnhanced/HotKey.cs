@@ -19,9 +19,9 @@ namespace RazorEnhanced
 
     public class HotKeyEvent
     {
-        public static HotKeyEvent LastEvent;
+        private readonly static DateTime UnixTimeBegin = new DateTime(1970, 1, 1);
 
-        public static DateTime UnixTimeBegin = new DateTime(1970, 1, 1);
+        public static HotKeyEvent LastEvent;
         public Keys HotKey;
         public double Timestamp;
 
@@ -32,8 +32,8 @@ namespace RazorEnhanced
 
         public HotKeyEvent(Keys key)
         {
-            this.HotKey = key;
-            this.Timestamp = DateTime.Now.Subtract(UnixTimeBegin).TotalSeconds;
+            HotKey = key;
+            Timestamp = DateTime.Now.Subtract(UnixTimeBegin).TotalSeconds;
         }
 
     }
@@ -44,10 +44,10 @@ namespace RazorEnhanced
 
         public class HotKeyData
         {
-            private string m_Name;
+            private readonly string m_Name;
             public string Name { get { return m_Name; } }
 
-            private Keys m_Key;
+            private readonly Keys m_Key;
             public Keys Key { get { return m_Key; } }
 
             public HotKeyData(string name, Keys key)
@@ -1021,27 +1021,62 @@ namespace RazorEnhanced
 			}
 		}
 
-		private static void ProcessAttack(string function)
-		{
-			switch (function)
-			{
-				case "Attack Last Target":
-					if (World.FindMobile(Targeting.GetLastTarger) != null)
-					{
-						Targeting.LastAttack = Targeting.GetLastTarger;
-						Assistant.Client.Instance.SendToServer(new AttackReq(Targeting.GetLastTarger));
-					}
-					break;
-				case "Attack Last":
-					if (Targeting.LastAttack != 0)
-						Assistant.Client.Instance.SendToServer(new AttackReq(Targeting.LastAttack));
-					break;
-				case "WarMode ON/OFF":
-					SpecialMoves.ToggleWarPeace();
-					break;
-				default:
-					break;
-			}
+        private static void ProcessAttack(string function)
+        {
+            switch (function)
+            {
+                case "Attack Last Target":
+                    if (World.FindMobile(Targeting.GetLastTarger) != null)
+                    {
+                        Targeting.LastAttack = Targeting.GetLastTarger;
+                        Assistant.Client.Instance.SendToServer(new AttackReq(Targeting.GetLastTarger));
+                    }
+                    break;
+                case "Attack Nearest Enemy":
+                    RazorEnhanced.Mobiles.Filter filter = new RazorEnhanced.Mobiles.Filter();
+                    filter.Notorieties.Add(6);
+                    filter.Notorieties.Add(5);
+                    filter.Notorieties.Add(4);
+                    filter.Notorieties.Add(3);
+                    filter.CheckIgnoreObject = true;
+                    filter.RangeMax = -1;
+                    filter.CheckLineOfSight = true;
+                    filter.Enabled = true;
+                    filter.Warmode = -1;
+                    var list = Mobiles.ApplyFilter(filter);
+                    if (list.Count > 0)
+                    {
+                        var anEnemy = Mobiles.Select(list, "Nearest");
+                        int color = 20;
+                        switch (anEnemy.Notoriety)
+                        {
+                            case 1: color = 190; break; //Blue
+                            case 2: color = 168; break; //Green
+                            case 3:
+                            case 4: color = 1000; break; //Gray
+                            case 5: color = 140; break; //Orange
+                            case 6: color = 138; break; //Red
+                            case 7: color = 153; break; //Yellow
+                        }
+                        Mobiles.Message(anEnemy, color, "[Enemy] " + anEnemy.Name);
+                        Player.Attack(anEnemy);
+                    }
+                    else
+                    {
+                        Player.HeadMessage(190, "No enemy found");
+                    }
+                    break;
+
+                case "Attack Last":
+                    if (Targeting.LastAttack != 0)
+                        Assistant.Client.Instance.SendToServer(new AttackReq(Targeting.LastAttack));
+                    break;
+                case "WarMode ON/OFF":
+                    SpecialMoves.ToggleWarPeace();
+                    break;
+                default:
+                    break;
+            }
 		}
 
 		private static void ProcessBandage(string function)
@@ -1496,14 +1531,13 @@ namespace RazorEnhanced
 					Assistant.Item item = Spells.FindUsedLayer();
 					if (item != null)
 					{
-						Assistant.Point3D loc = Assistant.Point3D.MinusOne;
-						Assistant.Client.Instance.SendToServer(new LiftRequest(item, 1));
+                        Assistant.Client.Instance.SendToServer(new LiftRequest(item, 1));
 						Assistant.Client.Instance.SendToServer(new EquipRequest(item.Serial, Assistant.World.Player, item.Layer)); // Equippa
 					}
 					break;
 
 				case "Last Spell":
-					Spells.CastLastSpellInternal(false);
+					Spells.CastLastSpell(false);
 					break;
 
                 case "Last Spell Last Target":
@@ -1844,7 +1878,7 @@ namespace RazorEnhanced
 			Engine.MainWindow.GridScriptComboBox.Items.Clear();
 			foreach (HotKeyData keydata in keylist)
 			{
-				Engine.MainWindow.GridScriptComboBox.Items.Add(keydata.Name); // Aggiorna lista script spellgrid
+				Engine.MainWindow.GridScriptComboBox.Items.Add(keydata.Name); // refresh script spellgrid
 				Engine.MainWindow.HotKeyTreeView.Nodes[0].Nodes[7].Nodes[1].Nodes.Add(GenerateNode(keydata));
 			}
 

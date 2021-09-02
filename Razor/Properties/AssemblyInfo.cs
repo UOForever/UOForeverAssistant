@@ -7,10 +7,10 @@ using System.Runtime.InteropServices;
 // associated with an assembly.
 //
 [assembly: AssemblyTitle("UOForever Assistant")]
-[assembly: AssemblyDescription("Assistant")]
+[assembly: AssemblyDescription("UOForever Official Assistant")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("www.uoforever.com")]
-[assembly: AssemblyProduct("UOForever Assistant")]
+[assembly: AssemblyProduct("UOForever")]
 [assembly: AssemblyCopyright("")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -26,7 +26,7 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Revision and Build Numbers
 // by using the '*' as shown below:
 
-[assembly: AssemblyVersion("1.0.0")]
+[assembly: AssemblyVersion("0.1.0.0")]
 
 //
 // In order to sign your assembly you must specify a key to use. Refer to the

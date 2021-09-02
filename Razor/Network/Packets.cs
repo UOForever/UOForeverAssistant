@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO.Compression;
 
 namespace Assistant
 {
@@ -18,6 +19,16 @@ namespace Assistant
         Encoded = 0xC0,
 
         Special = 0x20,
+    }
+
+    internal sealed class EmoteAction : Packet
+    {
+        public EmoteAction(string action) : base(0x12)
+        {
+            EnsureCapacity(1 + action.Length);
+            Write((byte)0xC7);
+            WriteAsciiNull(action);
+        }
     }
 
     internal sealed class QueryPartyLocs : Packet
@@ -862,6 +873,83 @@ namespace Assistant
         }
     }
 
+    // Doesn't seem to work right, puts up a fixed gump, ignores text 
+    internal sealed class DisplaySignGump : Packet
+    {
+        internal DisplaySignGump()
+            : base(0x8B)
+        {
+            string text = "Text Test";
+            string caption = "Caption Test";
+            int gumpid = 990099;
+            EnsureCapacity(3 + 4 + 2 + 2 + text.Length + 2 + caption.Length);            
+            Write((int)World.Player.Serial);
+            Write((ushort)gumpid);
+            Write((ushort)text.Length);
+            WriteAsciiNull(text);
+            Write((ushort)caption.Length);
+            WriteAsciiNull(caption);
+        }
+    }
+
+    // Doesn't seem to work right, puts up a fixed gump, ignores text 
+    internal sealed class GenericGump : Packet
+    {
+        internal GenericGump(uint gumpid, uint serial, uint x, uint y,
+            string gumpDefinition, List<string> gumpStrings)
+            : base(0xDD)
+        {
+            string compGumpEntries = "";
+            string compGumpStrings = "";
+            uint gumpId = gumpid;
+            uint gumpSerial = serial;
+            uint gumpX = x;
+            uint gumpY = y;
+            //uint packedLength = 182;
+            //uint linesCount = 0;
+            //uint uncompGumpStringsLength = 543;
+            EnsureCapacity(4 + 4 + 4 + 4 + 4 + 4 + compGumpEntries.Length + 4 + 4 + 4 + 4 + compGumpStrings.Length);
+            Write((uint) gumpSerial);
+            Write((uint) gumpId);
+            Write((uint) gumpX);
+            Write((uint)gumpY);
+
+            byte[] dest = new byte[gumpDefinition.Length]; // compressed SHOULD be smalled than uncompressed
+            int destLen = dest.Length;
+            bool worked = (DLLImport.ZLib.compress(dest, ref destLen, System.Text.Encoding.ASCII.GetBytes(gumpDefinition), gumpDefinition.Length) == ZLibError.Z_OK);
+            Write((uint)destLen + 4);
+            Write((uint) gumpDefinition.Length);
+            Write((byte[])dest, 0, destLen);
+            Write((uint)gumpStrings.Count);
+
+            using (System.IO.MemoryStream ms = new System.IO.MemoryStream())
+            {
+                foreach (string s in gumpStrings)
+                {
+                    short len = (short)s.Length;
+                    byte[] lenBytes = BitConverter.GetBytes(len);
+                    ms.WriteByte(lenBytes[1]);
+                    ms.WriteByte(lenBytes[0]);
+                    char[] charArray = new char[len];
+                    s.CopyTo(0, charArray, 0, len);
+                    byte[] bytes = System.Text.Encoding.BigEndianUnicode.GetBytes(s);
+                    ms.Write(bytes, 0, bytes.Length);
+                }                
+                //ms.Flush();
+                byte[] textBuffer = ms.ToArray();
+                int compressedSize = textBuffer.Length + 10;
+                byte[] compressedData = new byte[compressedSize+10]; // compressed SHOULD be smalled than uncompressed
+                ZLibError compResult2 = DLLImport.ZLib.compress(compressedData, ref compressedSize, textBuffer, textBuffer.Length);
+                bool worked2 = ( compResult2 == ZLibError.Z_OK);
+
+                Write((uint)compressedSize + 4);
+                Write((uint)textBuffer.Length);
+                Write((byte[])compressedData, 0, compressedSize);
+            }
+        }
+    }
+
+
     internal sealed class CloseGump : Packet
     {
         internal CloseGump(uint typeID, uint buttonID)
@@ -901,27 +989,24 @@ namespace Assistant
 
     internal sealed class UseAbility : Packet
     {
-        // ints are 'encoded' with a leading bool, if true then the number is 0, if flase then followed by all 4 bytes (lame :-)
-        internal UseAbility(AOSAbility a)
+        // ints are 'encoded' with a leading bool, if true then the number is 0, if false then followed by all 4 bytes (lame :-)
+        internal UseAbility(AOSAbility abilityIndex)
             : base(0xD7)
         {
-            EnsureCapacity(1 + 2 + 4 + 2 + 4);
+            EnsureCapacity(1 + 2 + 4 + 2 + 1 + 4);
 
             Write((uint)World.Player.Serial);
             Write((ushort)0x19);
-            if (a == AOSAbility.Clear)
+            if (abilityIndex == AOSAbility.Clear)
             {
-                Write((byte)0x00);
-                Write((byte)0x00);
-                Write((byte)0x00);
-                Write((byte)0x00);
+                Write(true);
+                // server assumes ability index is 0 (lame)
             }
             else
             {
                 Write(false);
-                Write((int)a);
+                Write((int)abilityIndex);
             }
-            Write((byte)0x0A);
         }
     }
 
@@ -1063,13 +1148,28 @@ namespace Assistant
         {
         }
 
-        internal HuePicker(Serial serial, ItemID itemid)
+        internal HuePicker(Serial target, ItemID itemid)
             : base(0x95, 9)
         {
-            Write((uint)serial);
+            //BYTE[4] itemID of dye target
+            //BYTE[2] ignored on send, model on return
+            //BYTE[2] model on send, color on return from client (default on server send is 0x0FAB)
+            Write((uint)target);
             Write((ushort)0);
             Write((ushort)itemid);
         }
+
+        internal HuePicker(Serial target, ItemID model, ushort color )
+            : base(0x95, 9)
+        {
+            //BYTE[4] itemID of dye target
+            //BYTE[2] ignored on send, model on return
+            //BYTE[2] model on send, color on return from client (default on server send is 0x0FAB)
+            Write((uint)target);
+            Write((ushort)model);
+            Write((ushort)color);
+        }
+
     }
 
     internal sealed class WalkRequest : Packet
@@ -1162,7 +1262,8 @@ namespace Assistant
             else
                 serial &= 0x7FFFFFFF;
             Write((uint)serial);
-            Write((ushort)(itemID & 0x7FFF));
+            ushort maskedItemID = (ushort)(itemID & 0x7FFF);
+            Write(maskedItemID);
             if (amount != 0)
                 Write((ushort)amount);
 
@@ -1185,6 +1286,81 @@ namespace Assistant
                 Write((ushort)hue);
             if (flags != 0)
                 Write((byte)flags);
+        }
+    }
+    internal sealed class SAWorldItem : Packet
+    {
+        internal SAWorldItem(Item item)
+            : base(0xF3)
+        {
+            this.EnsureCapacity(26);
+
+            // Post-7.0.9.0
+            /*
+			New World Item Packet
+			PacketID: 0xF3
+			PacketLen: 26
+			Format:
+
+				BYTE - 0xF3 packetId
+				WORD - 0x01
+				BYTE - ArtDataID: 0x00 if the item uses art from TileData table, 0x02 if the item uses art from MultiData table)
+				DWORD - item Serial
+				WORD - item ID
+				BYTE - item direction (same as old)
+				WORD - amount
+				WORD - amount
+				WORD - X
+				WORD - Y
+				SBYTE - Z
+				BYTE - item light
+				WORD - item Hue
+				BYTE - item flags (same as old packet)
+				WORD ???
+			*/
+
+            uint serial = (uint)item.Serial;
+            ushort itemID = item.ItemID;
+            ushort amount = item.Amount;
+            int x = item.Position.X;
+            int y = item.Position.Y;
+            ushort hue = item.Hue;
+            byte flags = item.GetPacketFlags();
+            byte direction = item.Direction;
+
+            //if (amount != 0)
+            //    serial |= 0x80000000;
+            //else
+            serial &= 0x7FFFFFFF;
+            //Write((ushort)0x00); // ??
+            //Write((ushort)0x01);
+
+
+            byte artDataId = item.ArtID;
+            //if ((0x4000 & itemID) == 0x4000)
+            //    artDataId = 2;
+            Write((byte)artDataId);
+
+            Write((uint)serial);
+            Write((ushort)(itemID & 0x7FFF));
+            Write((byte)0); // graph inc ?
+
+            Write((ushort)amount);
+            Write((ushort)0); // unknown
+
+            x &= 0x7FFF;
+            Write((ushort)x);
+
+            y &= 0x3FFF;
+            Write((ushort)y);
+
+            Write((sbyte)item.Position.Z);
+
+            Write((byte)direction);
+
+            Write((ushort)hue);
+            Write((byte)flags);
+            Write((ushort)0);
         }
     }
 
@@ -1454,6 +1630,18 @@ namespace Assistant
         }
     }
 
+    internal sealed class MegaCliloc : Packet
+    {
+        internal MegaCliloc(List<Serial> entity)
+            : base(0xD6)
+        {
+            EnsureCapacity(1 + 2 + (4 * entity.Count));
+            foreach (var i in entity)
+                Write((uint)i);
+        }
+    }
+
+
     internal sealed class ContextMenuResponse : Packet
     {
         internal ContextMenuResponse(Serial entity, ushort idx)
@@ -1523,8 +1711,8 @@ namespace Assistant
     {
         internal const int MaxItemsPerStairBuffer = 750;
 
-        private static byte[] m_InflatedBuffer = new byte[0x2000];
-        private static byte[] m_DeflatedBuffer = new byte[0x2000];
+        private static readonly byte[] m_InflatedBuffer = new byte[0x2000];
+        private static readonly byte[] m_DeflatedBuffer = new byte[0x2000];
 
         internal static void Clear(byte[] buffer, int size)
         {
@@ -1666,12 +1854,34 @@ namespace Assistant
 
     internal sealed class Disconnect : Packet
     {
-        internal Disconnect()
+        internal Disconnect(bool toServer = false)
             : base(0xD1, 2)
         {
-            Write((byte)0x01);
+            var payload = toServer ? 0x00 : 0x01;
+            Write((byte)payload);
         }
     }
+
+    internal sealed class LogoffNotification : Packet
+    {
+        internal LogoffNotification()
+            : base(0x01, 2)
+        {
+            Write(0xFFFFFFFF);
+        }
+    }
+
+    internal sealed class ClosedStatusGump : Packet
+    {
+        internal ClosedStatusGump()
+            : base(0xBF, 2)
+        {
+            Write(0x0009); //Packet Length
+            Write(0x000c); //Subcommand 0x0c: Closed Status Gump
+            Write(World.Player.Serial);
+        }
+    }
+
 
     internal sealed class PromptResponse : Packet
     {

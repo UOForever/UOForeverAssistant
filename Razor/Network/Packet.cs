@@ -57,7 +57,7 @@ namespace Assistant
 			}
 		}
 
-		private static byte[] m_Buffer = new byte[4]; // Internal format buffer.
+		private static readonly byte[] m_Buffer = new byte[4]; // Internal format buffer.
 		private MemoryStream m_Stream;
 		private bool m_DynSize;
 		private byte m_PacketID;
@@ -197,7 +197,7 @@ namespace Assistant
 							break;
 
 						case PacketPath.RazorToServer:
-							pathStr = "Assistant -> Server";
+							pathStr = "Razor -> Server";
 							break;
 
 						case PacketPath.ServerToClient:
@@ -205,7 +205,7 @@ namespace Assistant
 							break;
 
 						case PacketPath.RazorToClient:
-							pathStr = "Assistant -> Client";
+							pathStr = "Razor -> Client";
 							break;
 
 						case PacketPath.PacketVideo:
@@ -358,9 +358,7 @@ namespace Assistant
 				return String.Empty;
 
 			long bound = m_Stream.Position + fixedLength;
-			long end = bound;
-
-			if (bound > m_Stream.Length)
+            if (bound > m_Stream.Length)
 				bound = m_Stream.Length;
 
 			int count = 0;
@@ -375,9 +373,8 @@ namespace Assistant
 			index = 0;
 
 			byte[] buffer = new byte[count];
-			int value = 0;
-
-			while (m_Stream.Position < bound && (value = ReadByte()) != 0)
+            int value;
+            while (m_Stream.Position < bound && (value = ReadByte()) != 0)
 				buffer[index++] = (byte)value;
 
 			string s = Encoding.UTF8.GetString(buffer);
@@ -420,9 +417,8 @@ namespace Assistant
 			index = 0;
 
 			byte[] buffer = new byte[count];
-			int value = 0;
-
-			while (m_Stream.Position < m_Stream.Length && (value = ReadByte()) != 0)
+            int value;
+            while (m_Stream.Position < m_Stream.Length && (value = ReadByte()) != 0)
 				buffer[index++] = (byte)value;
 
 			string s = Encoding.UTF8.GetString(buffer);
@@ -463,9 +459,8 @@ namespace Assistant
 			index = 0;
 
 			byte[] buffer = new byte[count];
-			int value = 0;
-
-			while (m_Stream.Position < m_Stream.Length && (value = ReadByte()) != 0)
+            int value;
+            while (m_Stream.Position < m_Stream.Length && (value = ReadByte()) != 0)
 				buffer[index++] = (byte)value;
 
 			return Encoding.UTF8.GetString(buffer);
@@ -802,10 +797,10 @@ namespace Assistant
 	public unsafe sealed class PacketReader
 	{
 		//private unsafe byte* m_Data;
-		private byte[] m_Data;
+		private readonly byte[] m_Data;
 		private int m_Pos;
-		private int m_Length;
-		private bool m_Dyn;
+		private readonly int m_Length;
+		private readonly bool m_Dyn;
 
 		internal unsafe PacketReader(byte* buff, int len, bool dyn)
 		{
@@ -868,23 +863,23 @@ namespace Assistant
 
 		internal PacketReader GetCompressedReader()
 		{
-			int fullLen = ReadInt32();
-			int destLen = 0;
-			byte[] buff = new byte[1];
+			int fullLen = ReadInt32(); // Compressed Gump data length (CLen or CTxtLen)
+            byte[] buff = new byte[1];
 
 			if (fullLen >= 4)
 			{
-				int packLen = ReadInt32();
-				destLen = packLen;
+				int packLen = ReadInt32(); // Decompressed Gump data length (DLen or DTxtLen)
+                int destLen = packLen + 1000;
 
-				if (destLen < 0)
+                if (destLen < 0)
 					destLen = 0;
 
 				buff = new byte[destLen];
 
 				if (fullLen > 4 && destLen > 0)
 				{
-					if (DLLImport.ZLib.uncompress(buff, ref destLen, CopyBytes(this.Position, fullLen - 4), fullLen - 4) != ZLibError.Z_OK)
+                    var result = DLLImport.ZLib.uncompress(buff, ref destLen, CopyBytes(this.Position, fullLen - 4), fullLen - 4);
+                    if (result != ZLibError.Z_OK)
 					{
 						destLen = 0;
 						buff = new byte[1];
@@ -1023,9 +1018,7 @@ namespace Assistant
 				return String.Empty;
 
 			int bound = m_Pos + fixedLength;
-			int end = bound;
-
-			if (bound > m_Length)
+            if (bound > m_Length)
 				bound = m_Length;
 
 			int count = 0;
@@ -1040,9 +1033,8 @@ namespace Assistant
 			index = 0;
 
 			byte[] buffer = new byte[count];
-			int value = 0;
-
-			while (m_Pos < bound && (value = ReadByte()) != 0)
+            int value;
+            while (m_Pos < bound && (value = ReadByte()) != 0)
 				buffer[index++] = (byte)value;
 
 			string s = Encoding.UTF8.GetString(buffer);
@@ -1085,9 +1077,8 @@ namespace Assistant
 			index = 0;
 
 			byte[] buffer = new byte[count];
-			int value = 0;
-
-			while (m_Pos < m_Length && (value = ReadByte()) != 0)
+            int value;
+            while (m_Pos < m_Length && (value = ReadByte()) != 0)
 				buffer[index++] = (byte)value;
 
 			string s = Encoding.UTF8.GetString(buffer);
@@ -1128,9 +1119,8 @@ namespace Assistant
 			index = 0;
 
 			byte[] buffer = new byte[count];
-			int value = 0;
-
-			while (m_Pos < m_Length && (value = ReadByte()) != 0)
+            int value;
+            while (m_Pos < m_Length && (value = ReadByte()) != 0)
 				buffer[index++] = (byte)value;
 
 			return Encoding.UTF8.GetString(buffer);

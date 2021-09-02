@@ -36,13 +36,13 @@ namespace Assistant
 			}
 		}
 
-		private List<int> m_StringNums = new List<int>();
+		private readonly List<int> m_StringNums = new List<int>();
 
 		private int m_Hash = 0;
 		private List<OPLEntry> m_Content = new List<OPLEntry>();
 		internal List<OPLEntry> Content { get { return m_Content; } }
 
-		private UOEntity m_Owner = null;
+		private readonly UOEntity m_Owner = null;
 
 		internal ObjectPropertyList(UOEntity owner)
 		{
@@ -53,9 +53,10 @@ namespace Assistant
 
 		internal void Read(PacketReader p)
 		{
-			m_Content.Clear();
+            var property_list = new List<OPLEntry>();
 
-			p.Seek(5, System.IO.SeekOrigin.Begin); // seek to packet data
+
+            p.Seek(5, System.IO.SeekOrigin.Begin); // seek to packet data
 
 			p.ReadUInt32(); // serial
 			p.ReadByte(); // 0
@@ -78,14 +79,16 @@ namespace Assistant
 				if (bytes > 0)
 					args = p.ReadUnicodeStringBE(bytes >> 1);
 
-				if (m_Content.Any(e => e.Number == num))
+				if (property_list.Any(e => e.Number == num))
 					continue;
 				else
-					m_Content.Add(new OPLEntry(num, args));
+                    property_list.Add(new OPLEntry(num, args));
 			}
-		}
 
-		private static int[] m_DefaultStringNums = new int[]
+            m_Content = property_list;
+        }
+
+		private static readonly int[] m_DefaultStringNums = new int[]
 		{
 			1042971, // ~1_NOTHING~
 			1070722, // ~1_NOTHING~

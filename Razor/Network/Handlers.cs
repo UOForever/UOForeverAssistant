@@ -7,9 +7,9 @@ using RazorEnhanced;
 
 namespace Assistant
 {
-	internal class PacketHandlers
+	public class PacketHandlers
 	{
-		private static List<Item> m_IgnoreGumps = new List<Item>();
+		private static readonly List<Item> m_IgnoreGumps = new List<Item>();
 		internal static List<Item> IgnoreGumps { get { return m_IgnoreGumps; } }
 
 		public static void Initialize()
@@ -59,9 +59,10 @@ namespace Assistant
             PacketHandler.RegisterServerToClientViewer(0x24, new PacketViewerCallback(RazorEnhanced.Vendor.StoreBuyList));
             PacketHandler.RegisterServerToClientFilter(0x25, new PacketFilterCallback(ContainerContentUpdate));
 			PacketHandler.RegisterServerToClientViewer(0x27, new PacketViewerCallback(LiftReject));
-			//PacketHandler.RegisterServerToClientViewer(0x28, new PacketViewerCallback(DropReject));
-			//PacketHandler.RegisterServerToClientViewer(0x29, new PacketViewerCallback(DropAccepted));
-			PacketHandler.RegisterServerToClientViewer(0x2C, new PacketViewerCallback(MyDeath));
+            PacketHandler.RegisterServerToClientViewer(0x95, new PacketViewerCallback(HueResponse));
+            //PacketHandler.RegisterServerToClientViewer(0x28, new PacketViewerCallback(DropReject));
+            //PacketHandler.RegisterServerToClientViewer(0x29, new PacketViewerCallback(DropAccepted));
+            PacketHandler.RegisterServerToClientViewer(0x2C, new PacketViewerCallback(MyDeath));
 			PacketHandler.RegisterServerToClientViewer(0x2D, new PacketViewerCallback(MobileStatInfo));
 			PacketHandler.RegisterServerToClientFilter(0x2E, new PacketFilterCallback(EquipmentUpdate));
             PacketHandler.RegisterServerToClientViewer(0x3A, new PacketViewerCallback(Skills));
@@ -106,7 +107,7 @@ namespace Assistant
 			PacketHandler.RegisterServerToClientViewer(0xF3, new PacketViewerCallback(SAWorldItem));
             PacketHandler.RegisterServerToClientViewer(0xF5, new PacketViewerCallback(MapDetails));
             PacketHandler.RegisterServerToClientViewer(0xF6, new PacketViewerCallback(MoveBoatHS));
-		}
+        }
 
 		private static void DisplayStringQuery(PacketReader p, PacketHandlerEventArgs args)
 		{
@@ -263,76 +264,80 @@ namespace Assistant
 		private static void ExtendedClientCommand(Packet p, PacketHandlerEventArgs args)
 		{
 			ushort ext = p.ReadUInt16();
-			switch (ext)
-			{
-				case 0x09: // Sa disarm
-					{
-						if (RazorEnhanced.ScriptRecorder.OnRecord)
-							RazorEnhanced.ScriptRecorder.Record_SADisarm();
-						break;
-					}
-				case 0x0A: // Sa Stun
-					{
-						if (RazorEnhanced.ScriptRecorder.OnRecord)
-							RazorEnhanced.ScriptRecorder.Record_SAStun();
-						break;
-					}
-			/*	case 0x10: // query object properties
-					{
-						break;
-					}*/
-				case 0x15: // context menu response
-					{
-						//UOEntity ent = null;
-						Serial ser = p.ReadUInt32();
-						ushort idx = p.ReadUInt16();
+            switch (ext)
+            {
+                case 0x09: // Sa disarm
+                    {
+                        if (RazorEnhanced.ScriptRecorder.OnRecord)
+                            RazorEnhanced.ScriptRecorder.Record_SADisarm();
+                        break;
+                    }
+                case 0x0A: // Sa Stun
+                    {
+                        if (RazorEnhanced.ScriptRecorder.OnRecord)
+                            RazorEnhanced.ScriptRecorder.Record_SAStun();
+                        break;
+                    }
+                /*	case 0x10: // query object properties
+                        {
+                            break;
+                        }*/
+                case 0x15: // context menu response
+                    {
+                        //UOEntity ent = null;
+                        Serial ser = p.ReadUInt32();
+                        ushort idx = p.ReadUInt16();
 
-						//if (ser.IsMobile)
-						//	ent = World.FindMobile(ser);
-						//else if (ser.IsItem)
-						//	ent = World.FindItem(ser);
+                        //if (ser.IsMobile)
+                        //	ent = World.FindMobile(ser);
+                        //else if (ser.IsItem)
+                        //	ent = World.FindItem(ser);
 
-						if (RazorEnhanced.ScriptRecorder.OnRecord)
-							RazorEnhanced.ScriptRecorder.Record_ContextMenuResponse(ser, idx);
+                        if (RazorEnhanced.ScriptRecorder.OnRecord)
+                            RazorEnhanced.ScriptRecorder.Record_ContextMenuResponse(ser, idx);
 
-						World.Player.HasContext = false;
-						World.Player.ContextID = 0;
+                        World.Player.HasContext = false;
+                        World.Player.ContextID = 0;
 
-						break;
-					}
-				case 0x1C:// cast spell
-					{
-						Serial ser = Serial.MinusOne;
-						if (p.ReadUInt16() == 1)
-							ser = p.ReadUInt32();
-						ushort sid = p.ReadUInt16();
+                        break;
+                    }
+                case 0x1C:// cast spell
+                    {
+                        Serial ser;
+                        if (p.ReadUInt16() == 1)
+                            ser = p.ReadUInt32();
+                        ushort sid = p.ReadUInt16();
 
-						if (RazorEnhanced.ScriptRecorder.OnRecord)
-							RazorEnhanced.ScriptRecorder.Record_ClientTextCommand(2, sid);
+                        if (RazorEnhanced.ScriptRecorder.OnRecord)
+                            RazorEnhanced.ScriptRecorder.Record_ClientTextCommand(2, sid);
 
-						Spell s = Spell.Get(sid);
-						if (s != null)
-						{
-							s.OnCast(p, false);
-							args.Block = true;
-						}
-						break;
-					}
-			/*	case 0x24:
-					{
-						// for the cheatx0r part 2...  anything outside this range indicates some haxing, just hide it with 0x30s
-						byte b = p.ReadByte();
-						if (b < 0x25 || b >= 0x5E + 0x25)
-						{
-							p.Seek(-1, SeekOrigin.Current);
-							p.Write((byte)0x30);
-						}
-						//using ( StreamWriter w = new StreamWriter( "bf24.txt", true ) )
-						//	w.WriteLine( "{0} : 0x{1:X2}", DateTime.Now.ToString( "HH:mm:ss.ffff" ), b );
-						break;
-					}*/
-			}
-		}
+                        Spell s = Spell.Get(sid);
+                        if (s != null)
+                        {
+                            s.OnCast(p, false);
+                            args.Block = true;
+                        }
+                        break;
+                    }
+                case 0x21:
+                    {
+                        break;
+                    }
+                    /*	case 0x24:
+                    {
+                        // for the cheatx0r part 2...  anything outside this range indicates some haxing, just hide it with 0x30s
+                        byte b = p.ReadByte();
+                        if (b < 0x25 || b >= 0x5E + 0x25)
+                        {
+                            p.Seek(-1, SeekOrigin.Current);
+                            p.Write((byte)0x30);
+                        }
+                        //using ( StreamWriter w = new StreamWriter( "bf24.txt", true ) )
+                        //	w.WriteLine( "{0} : 0x{1:X2}", DateTime.Now.ToString( "HH:mm:ss.ffff" ), b );
+                        break;
+                    }*/
+            }
+        }
 
 		private static void ClientTextCommand(PacketReader p, PacketHandlerEventArgs args)
 		{
@@ -410,11 +415,10 @@ namespace Assistant
 					{
 						if (RazorEnhanced.ScriptRecorder.OnRecord)
 						{
-							int virtueid = 0;
-							try
-							{
-								virtueid = Convert.ToInt32(command.Split(' ')[0]);
-								RazorEnhanced.ScriptRecorder.Record_ClientTextCommand(3, virtueid);
+                            try
+                            {
+                                int virtueid = Convert.ToInt32(command.Split(' ')[0]);
+                                RazorEnhanced.ScriptRecorder.Record_ClientTextCommand(3, virtueid);
 							}
 							catch { break; }
 						}
@@ -591,6 +595,11 @@ namespace Assistant
                 i.Container = dest;
                 World.AddItem(i);
 			}
+            else
+            {
+                // being dropped amount may change
+                i.Amount = 0;
+            }
             i.Container = dest;
             if (RazorEnhanced.ScriptRecorder.OnRecord)
 				RazorEnhanced.ScriptRecorder.Record_DropRequest(i, dser);
@@ -731,6 +740,31 @@ namespace Assistant
 			Item item = World.FindItem(ser);
 			if (item != null)
 			{
+				// Simone:
+				// The following code is trying to fix missing properties of items inside a container that is never been opened.
+				// Note: This behaviour is only present with ClassicUO version >= 0.1.5.x due to an optimization(https://github.com/andreakarasho/ClassicUO/pull/1226)
+				// When a container is opened, serial of all its items with PropsUpdated == false, are sent to server with MegaCliloc packet
+				// that is the bulk items request update. (https://docs.polserver.com/packets/index.php?Packet=0xD6)
+				if (Client.IsOSI == false)
+				{
+					if (item.Contains.Count > 0)
+					{
+						List<Serial> itemsWithoutProps = new List<Serial>();
+						foreach (Item itm in item.Contains)
+						{
+							if (itm.PropsUpdated == false)
+							{
+								itemsWithoutProps.Add(itm.Serial);
+							}
+						}
+						if (itemsWithoutProps.Count > 0)
+						{
+							Client.Instance.SendToServer(new MegaCliloc(itemsWithoutProps));
+						}
+					}
+				}
+				// End FIX
+
 				if (m_IgnoreGumps.Contains(item))
 				{
 					m_IgnoreGumps.Remove(item);
@@ -1107,8 +1141,10 @@ namespace Assistant
 				RazorEnhanced.ToolBar.Open();
 
 			// Apertura automatica spellgrit se abilitata
-			if (Engine.MainWindow.GridOpenLoginCheckBox.Checked && RazorEnhanced.SpellGrid.SpellGridForm == null)
+			if (Engine.MainWindow.GridOpenLoginCheckBox.Checked)
 				RazorEnhanced.SpellGrid.Open();
+
+			new System.Threading.Thread(DelayedTasks).Start();
 
 			// Avvio automatico script selezionati come autostart
 			RazorEnhanced.Scripts.AutoStart();
@@ -1122,6 +1158,21 @@ namespace Assistant
 				RazorEnhanced.BandageHeal.LoginAutostart();
 
 		}
+		internal static void DelayedTasks()
+		{
+
+			// Have to wait before openning the Gump based spellbars
+			int displayMethod = RazorEnhanced.Settings.General.ReadInt("SpellGridStyle");
+			if (displayMethod == 1)
+			{
+				if (RazorEnhanced.Settings.General.ReadBool("GridOpenLoginCheckBox"))
+				{
+					System.Threading.Thread.Sleep(5000); // retry open of spellgrid after 5 seconds
+					RazorEnhanced.SpellGrid.Open();
+				}
+			}
+		}
+
 
 		private static void MobileMoving(Packet p, PacketHandlerEventArgs args)
 		{
@@ -1569,29 +1620,43 @@ namespace Assistant
 
 				if (type > 0x05)        // KR Data
 				{
-					player.HitChanceIncrease = p.ReadInt16();
-					player.SwingSpeedIncrease = p.ReadInt16();
-					player.DamageChanceIncrease = p.ReadInt16();
-					player.LowerReagentCost = p.ReadInt16();
-					player.HitPointsRegeneration = p.ReadInt16();
-					player.StaminaRegeneration = p.ReadInt16();
-					player.ManaRegeneration = p.ReadInt16();
-					player.ReflectPhysicalDamage = p.ReadInt16();
-					player.EnhancePotions = p.ReadInt16();
-					player.DefenseChanceIncrease = p.ReadInt16();
-					player.SpellDamageIncrease = p.ReadInt16();
-					player.FasterCastRecovery = p.ReadInt16();
-					player.FasterCasting = p.ReadInt16();
-					player.LowerManaCost = p.ReadInt16();
-					player.StrengthIncrease = p.ReadInt16();
-					player.DexterityIncrease = p.ReadInt16();
-					player.IntelligenceIncrease = p.ReadInt16();
-					player.HitPointsIncrease = p.ReadInt16();
-					player.StaminaIncrease = p.ReadInt16();
-					player.ManaIncrease = p.ReadInt16();
-					player.MaximumHitPointsIncrease = p.ReadInt16();
-					player.MaximumStaminaIncrease = p.ReadInt16();
-					player.MaximumManaIncrease = p.ReadInt16();
+                    player.MaxPhysicResistence = p.Position + 2 > p.Length ? (short)0 : (short)p.ReadUInt16();
+
+                    player.MaxFireResistence = p.Position + 2 > p.Length ? (short)0 : (short)p.ReadUInt16();
+
+                    player.MaxColdResistence = p.Position + 2 > p.Length ? (short)0 : (short)p.ReadUInt16();
+
+                    player.MaxPoisonResistence = p.Position + 2 > p.Length ? (short)0 : (short)p.ReadUInt16();
+
+                    player.MaxEnergyResistence = p.Position + 2 > p.Length ? (short)0 : (short)p.ReadUInt16();
+
+                    player.DefenseChanceIncrease = p.Position + 2 > p.Length ? (short)0 : (short)p.ReadUInt16();
+
+                    player.MaxDefenseChanceIncrease = p.Position + 2 > p.Length ? (short)0 : (short)p.ReadUInt16();
+
+                    player.HitChanceIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.SwingSpeedIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.DamageChanceIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.LowerReagentCost = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.SpellDamageIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.FasterCastRecovery = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.FasterCasting = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.LowerManaCost = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+                    // OSI only send this much data in the packet .. all these others are bypassed because the packet is too short (121)
+                    player.HitPointsRegeneration = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.StaminaRegeneration = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.ManaRegeneration = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.ReflectPhysicalDamage = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.EnhancePotions = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.StrengthIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.DexterityIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.IntelligenceIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.HitPointsIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.StaminaIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.ManaIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.MaximumHitPointsIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.MaximumStaminaIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
+					player.MaximumManaIncrease = p.Position + 2 > p.Length ? (short)0 : p.ReadInt16();
 				}
 			}
 
@@ -1960,15 +2025,12 @@ namespace Assistant
 			bool isNew = false;
 			if (item == null)
 			{
-				World.AddItem(item = Item.Factory(serial, itemID));
-				isNew = true;
-			}
-			/*else
-			{
-				item.CancelRemove();
-			}*/
 
-			if (!DragDropManager.EndHolding(serial))
+                World.AddItem(item = Item.Factory(serial, itemID));
+                isNew = true;
+			}
+            item.ArtID = _artDataID;
+            if (!DragDropManager.EndHolding(serial))
 				return;
 
 			item.Container = null;
@@ -2022,7 +2084,15 @@ namespace Assistant
 
 			Item.UpdateContainers();
 
-			if (Assistant.Engine.MainWindow.ShowStaticFieldCheckBox.Checked)
+            int color = RazorEnhanced.Items.Hued(item.Serial);
+            if (color != -1)
+            {
+                item.Hue = (ushort)color;
+                args.Block = true;
+                Assistant.Client.Instance.SendToClient(new SAWorldItem(item));
+            }
+            //
+            if (Assistant.Engine.MainWindow.ShowStaticFieldCheckBox.Checked)
 				args.Block = RazorEnhanced.Filters.MakeWallStatic(item);
 		}
 
@@ -2064,27 +2134,37 @@ namespace Assistant
 			}
 		}
 
-		internal static List<string> SysMessages = new List<string>(21);
+    internal static List<string> SysMessages = new List<string>(21);
+    static int MaxJournalEntries = 200;
+        internal static void HandleSpeech(Packet p, PacketHandlerEventArgs args, Serial ser, ushort body, MessageType type, ushort hue, ushort font, string lang, string name, string text)
+        {
 
-		internal static void HandleSpeech(Packet p, PacketHandlerEventArgs args, Serial ser, ushort body, MessageType type, ushort hue, ushort font, string lang, string name, string text)
-		{
-			if (World.Player == null)
-				return;
+            if (World.Player == null)
+                return;
 
-			World.Player.Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(text, type.ToString(), hue, name, ser));          // Journal buffer
-			if (World.Player.Journal.Count > 100)
-			{
-				RazorEnhanced.Journal.JournalEntry ra;
-				World.Player.Journal.TryDequeue(out ra);
-			}
+            if (!ser.IsValid) // || ser == World.Player.Serial || ser.IsItem)
+            {
+                SysMessages.Add(text.ToLower());
+                if (SysMessages.Count >= 25)
+                    SysMessages.RemoveRange(0, 10);
+                type = MessageType.System;
+            }
 
-			if (!ser.IsValid || ser == World.Player.Serial || ser.IsItem)
-			{
-				SysMessages.Add(text.ToLower());
+            Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(text, type.ToString(), hue, name, ser));          // Journal buffer
 
-				if (SysMessages.Count >= 25)
-					SysMessages.RemoveRange(0, 10);
-			}
+            // If its a spoken message, and it doesn't have the speakers name in it,
+            //  add the speaker
+            if (type == MessageType.Regular)
+            {
+                RazorEnhanced.Mobile mobile = Mobiles.FindBySerial(ser);
+                if (mobile != null)
+                {
+                    if (!text.Contains(mobile.Name))
+                    {
+                        text = mobile.Name + ": " + text;
+                    }
+                }
+            }
 
             string trimmed_text = text.Trim();
             // ugly hack because OSI is not passing new spell words as type MessageType.Spell
@@ -2101,126 +2181,192 @@ namespace Assistant
                 }
             }
 
+            UpdateJournalList(text, type);
+
+            // Filter based on api selected blocks
+            foreach (string filter in Settings.JournalFilter.ReadAll())
+            {
+                if (trimmed_text.ToLower().Contains(filter))
+                {
+                    args.Block = true;
+                    return;
+                }
+            }
+
             if (type == MessageType.Spell)
-			{
+            {
                 Spell s = Spell.Get(trimmed_text);
                 bool replaced = false;
-				if (s != null)
-				{
-					System.Text.StringBuilder sb = new System.Text.StringBuilder(RazorEnhanced.Settings.General.ReadString("SpellFormat"));
-					sb.Replace(@"{power}", s.WordsOfPower);
-					string spell = Language.GetString(s.Name);
-					sb.Replace(@"{spell}", spell);
-					sb.Replace(@"{name}", spell);
+                if (s != null)
+                {
+                    System.Text.StringBuilder sb = new System.Text.StringBuilder(RazorEnhanced.Settings.General.ReadString("SpellFormat"));
+                    sb.Replace(@"{power}", s.WordsOfPower);
+                    string spell = Language.GetString(s.Name);
+                    sb.Replace(@"{spell}", spell);
+                    sb.Replace(@"{name}", spell);
 
-					string newText = sb.ToString();
+                    string newText = sb.ToString();
 
-					if (!string.IsNullOrEmpty(newText) && newText != text)
-					{
-				 		Assistant.Client.Instance.SendToClient(new AsciiMessage(ser, body, MessageType.Spell, s.GetHue(hue), font, name, newText));
-						replaced = true;
-						args.Block = true;
-					}
-				}
+                    if (!string.IsNullOrEmpty(newText) && newText != text)
+                    {
+                        Assistant.Client.Instance.SendToClient(new AsciiMessage(ser, body, MessageType.Spell, s.GetHue(hue), font, name, newText));
+                        replaced = true;
+                        args.Block = true;
+                    }
+                }
 
-				if (!replaced && RazorEnhanced.Settings.General.ReadBool("ForceSpellHue"))
-				{
-					p.Seek(10, SeekOrigin.Begin);
-					if (s != null)
-						p.Write((ushort)s.GetHue(hue));
-					else
-						p.Write((ushort)Engine.MainWindow.NeutralSpellHue);
-				}
-			}
-			else if (ser.IsMobile && type == MessageType.Label)
-			{
-				Mobile m = World.FindMobile(ser);
-				if (m != null && m.Name.IndexOf(text) != 5 && m != World.Player && !(text.StartsWith("(") && text.EndsWith(")")))
-					m.Name = text;
-			}
-			else if (ser != World.Player.Serial && type == MessageType.Focus) // Filter poison message OSI
-			{
-				if (Engine.MainWindow.FilterPoison.Checked)
-				{
-					if (text.EndsWith("*"))
-					{
-						args.Block = true;
-						return;
-					}
-				}
-			}
-			else
-			{
-				if (ser == Serial.MinusOne && name == "System")
-				{
-					if (Engine.MainWindow.FilterSnoopMsg.Checked && text.IndexOf(World.Player.Name) == -1 && text.StartsWith("You notice") && text.IndexOf("attempting to peek into") != -1 && text.IndexOf("belongings") != -1)
-					{
-						args.Block = true;
-						return;
-					}
-					else if (text.StartsWith("You've committed a criminal act") || text.StartsWith("You are now a criminal"))
-					{
-						World.Player.ResetCriminalTimer();
-					}
-				}
+                if (!replaced && RazorEnhanced.Settings.General.ReadBool("ForceSpellHue"))
+                {
+                    p.Seek(10, SeekOrigin.Begin);
+                    if (s != null)
+                        p.Write((ushort)s.GetHue(hue));
+                    else
+                        p.Write((ushort)Engine.MainWindow.NeutralSpellHue);
+                }
+            }
+            else if (ser.IsMobile && type == MessageType.Label)
+            {
+                Mobile m = World.FindMobile(ser);
+                if (m != null && m.Name.IndexOf(text) != 5 && m != World.Player && !(text.StartsWith("(") && text.EndsWith(")")))
+                    m.Name = text;
+            }
+            else if (ser != World.Player.Serial && type == MessageType.Focus) // Filter poison message OSI
+            {
+                if (Engine.MainWindow.FilterPoison.Checked)
+                {
+                    if (text.EndsWith("*"))
+                    {
+                        args.Block = true;
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                if (ser == Serial.MinusOne && name == "System")
+                {
+                    if (Engine.MainWindow.FilterSnoopMsg.Checked && text.IndexOf(World.Player.Name) == -1 && text.StartsWith("You notice") && text.IndexOf("attempting to peek into") != -1 && text.IndexOf("belongings") != -1)
+                    {
+                        args.Block = true;
+                        return;
+                    }
+                    else if (text.StartsWith("You've committed a criminal act") || text.StartsWith("You are now a criminal"))
+                    {
+                        World.Player.ResetCriminalTimer();
+                    }
+                }
 
-				// Filtro messsaggi poison
-				if (type == MessageType.Regular && hue == 33 && ser != World.Player.Serial)
-				{
-					if (Engine.MainWindow.FilterPoison.Checked)
-					{
-						if (text.EndsWith("*"))
-						{
-							args.Block = true;
-							return;
-						}
-					}
-				}
-				// Filtro messsaggi poison "seems to have no effect"
-				if (type == MessageType.Emote && hue == 946 && ser != World.Player.Serial)
-				{
-					if (Engine.MainWindow.FilterPoison.Checked)
-					{
-						if (text.EndsWith("t. *"))
-						{
-							args.Block = true;
-							return;
-						}
-					}
-				}
+                // Filtro messsaggi poison
+                if (type == MessageType.Regular && hue == 33 && ser != World.Player.Serial)
+                {
+                    if (Engine.MainWindow.FilterPoison.Checked)
+                    {
+                        if (text.EndsWith("*"))
+                        {
+                            args.Block = true;
+                            return;
+                        }
+                    }
+                }
+                // Filtro messsaggi poison "seems to have no effect"
+                if (type == MessageType.Emote && hue == 946 && ser != World.Player.Serial)
+                {
+                    if (Engine.MainWindow.FilterPoison.Checked)
+                    {
+                        if (text.EndsWith("t. *"))
+                        {
+                            args.Block = true;
+                            return;
+                        }
+                    }
+                }
 
-				if ((type == MessageType.Emote || type == MessageType.Regular || type == MessageType.Whisper || type == MessageType.Yell) && ser.IsMobile && ser != World.Player.Serial)
-				{
-					if (Engine.MainWindow.ForceSpeechHue.Checked)
-					{
-						p.Seek(10, SeekOrigin.Begin);
-						p.Write((ushort)Engine.MainWindow.SpeechHue);
-					}
-				}
+                if ((type == MessageType.Emote || type == MessageType.Regular || type == MessageType.Whisper || type == MessageType.Yell) && ser.IsMobile && ser != World.Player.Serial)
+                {
+                    if (Engine.MainWindow.ForceSpeechHue.Checked)
+                    {
+                        p.Seek(10, SeekOrigin.Begin);
+                        p.Write((ushort)Engine.MainWindow.SpeechHue);
+                    }
+                }
 
-				if (Engine.MainWindow.FilterSpam.Checked && (ser == Serial.MinusOne || ser == Serial.Zero))
-				{
-					if (!MessageQueue.Enqueue(ser, body, type, hue, font, lang, name, text))
-					{
-						args.Block = true;
-						return;
-					}
-				}
+                // Filtro talk orc lizart rat
+                if (Engine.MainWindow.FilterNPC.Checked && ser.IsMobile)
+                {
+                    Mobile m = World.FindMobile(ser);
+                    if (m != null && RazorEnhanced.Filters.IsOrcLizardRat(m.Body))
+                    {
+                        args.Block = true;
+                        return;
+                    }
+                }
 
-				// Filtro talk orc lizart rat
-				if (Engine.MainWindow.FilterNPC.Checked && ser.IsMobile)
-				{
-					Mobile m = World.FindMobile(ser);
-					if (m != null && RazorEnhanced.Filters.IsOrcLizardRat(m.Body))
-					{
-						args.Block = true;
-						return;
-					}
-				}
-			}
-		}
+                if (Engine.MainWindow.FilterSpam.Checked && (ser == Serial.MinusOne || ser == Serial.Zero))
+                {
+                    if (!MessageQueue.Enqueue(ser, body, type, hue, font, lang, name, text))
+                    {
+                        args.Block = true;
+                        return;
+                    }
+                }
+            }
+        }
 
-		internal static void AsciiSpeech(Packet p, PacketHandlerEventArgs args)
+        internal static System.Data.DataTable JIList = InitJournalItems();
+        internal static System.Data.DataTable InitJournalItems()
+        {
+            System.Data.DataTable retTable = new System.Data.DataTable("JournalItems");
+            retTable.Columns.Add(new System.Data.DataColumn("type", Type.GetType("System.String")));
+            retTable.Columns.Add(new System.Data.DataColumn("text", Type.GetType("System.String")));
+
+            return retTable;
+        }
+
+        internal static void UpdateJournalList(string text, MessageType type)
+        {
+            string typeStr = type.ToString();
+            if (type == MessageType.Spell)
+            {
+                string trimmed_text = text.Trim();
+                Spell s = Spell.Get(trimmed_text);
+                 if (s != null)
+                 {
+                    string spell = Language.GetString(s.Name);
+                    text = text + " (" + spell + ")";
+                }
+            }
+            if (Engine.MainWindow.JournalTextSelection.CheckedItems.Contains(typeStr))
+            {                
+                if (JIList.Rows.Count == 0 || JIList.Rows[0]["text"].ToString() != text)
+                {
+                    //if (JIList.Rows.Count > 0)
+                    //    string test = JIList.Rows[0]["text"].ToString();
+                    int currentRow = Engine.MainWindow.JournalList.FirstDisplayedScrollingRowIndex;
+                    System.Data.DataRow newRow = JIList.NewRow();
+                    newRow["type"] = typeStr.ToLower();
+                    newRow["text"] = text.ToLower();
+                    //JIList.
+                    JIList.Rows.InsertAt(newRow, 0);
+                    if (JIList.Rows.Count > MaxJournalEntries)
+                    {
+                        System.Data.DataRow toBeRemoved = JIList.Rows[JIList.Rows.Count - 1];
+                        toBeRemoved.Delete();
+                    }
+                    JIList.AcceptChanges();
+                    if (currentRow != 0)
+                    {
+                        // Engine.MainWindow.SafeAction(s => { s.JournalList.FirstDisplayedScrollingRowIndex = currentRow+1; });
+                    }
+                    else
+                    {
+                        Engine.MainWindow.SafeAction(s => { s.JournalList.FirstDisplayedScrollingRowIndex = 0; });
+                    }
+
+                }
+            }
+        }
+
+        internal static void AsciiSpeech(Packet p, PacketHandlerEventArgs args)
 		{
 			// 0, 1, 2
 			Serial serial = p.ReadUInt32(); // 3, 4, 5, 6
@@ -2337,15 +2483,28 @@ namespace Assistant
 			RazorEnhanced.GumpInspector.NewGumpStandardAddLog(World.Player.CurrentGumpS, World.Player.CurrentGumpI);
 		}
 
-		private static void ClientGumpResponse(PacketReader p, PacketHandlerEventArgs args)
+		internal static void ClientGumpResponse(PacketReader p, PacketHandlerEventArgs args)
 		{
 			if (World.Player == null)
 				return;
 
 			Serial ser = p.ReadUInt32();
 			uint tid = p.ReadUInt32();
-			int bid = p.ReadInt32();
-			List<int> switchesid = new List<int>();
+            Gumps.GumpData gd = null;
+            if (Gumps.m_gumpData.ContainsKey(tid))
+            {
+                args.Block = true;
+                gd = Gumps.m_gumpData[tid];
+                gd.switches = new List<int>();
+                gd.text = new List<string>();
+                gd.textID = new List<int>();
+            }
+
+            int bid = p.ReadInt32();
+            if (gd != null)
+                gd.buttonid = bid;
+
+            List<int> switchesid = new List<int>();
 
 			RazorEnhanced.GumpInspector.GumpResponseAddLogMain(ser, tid, bid);
 
@@ -2362,8 +2521,12 @@ namespace Assistant
 			{
 				switches[i] = p.ReadInt32();
 				switchesid.Add(switches[i]);
-			}
-			RazorEnhanced.GumpInspector.GumpResponseAddLogSwitchID(switchesid);
+                if (gd != null)
+                {
+                    gd.switches.Add(switches[i]);
+                }
+            }
+            RazorEnhanced.GumpInspector.GumpResponseAddLogSwitchID(switchesid);
 			int ec = p.ReadInt32();
 			if (ec < 0 || ec > 2000)
 				return;
@@ -2376,15 +2539,31 @@ namespace Assistant
 				if (len >= 240)
 					return;
 				string text = p.ReadUnicodeStringSafe(len);
+                if (gd != null)
+                {
+                    gd.text.Add(text);
+                    gd.textID.Add(id);
+                }
 
-				RazorEnhanced.GumpInspector.GumpResponseAddLogTextID(id, text);
+                RazorEnhanced.GumpInspector.GumpResponseAddLogTextID(id, text);
 			}
 
 			RazorEnhanced.GumpInspector.GumpResponseAddLogEnd();
 
 			if (RazorEnhanced.ScriptRecorder.OnRecord)
 				RazorEnhanced.ScriptRecorder.Record_GumpsResponse(tid, bid);
-		}
+
+            if (gd != null)
+            {
+                args.Block = true;
+                gd.hasResponse = true;
+				if (gd.action != null)
+				{
+					System.Threading.Thread doAction = new System.Threading.Thread(() => gd.action(gd));
+					doAction.Start();
+				}
+			}
+        }
 
 		private static void ChangeSeason(PacketReader p, PacketHandlerEventArgs args)
 		{
@@ -2392,6 +2571,15 @@ namespace Assistant
 				World.Player.Season = p.ReadByte();
 		}
 
+
+        //Dalamar:
+        // Is needed a way to "toggle" the display of context menu for the client, by blocking the packet or not.
+        //  public static bool ShowContextMenu = true;
+        //
+        // While srgith-forward might end-up causing issue to the client ( if the toggle remains off ).
+        // So instead, we block them for the next X seconds, so if none is done, the normal behaviour will be anyway restored.
+        // At the time of writing this value is used only inside Misc.WaitForContext()
+        public static DateTime HideContextUntil = DateTime.Now;
 		private static void ExtendedPacket(PacketReader p, PacketHandlerEventArgs args)
 		{
 			ushort type = p.ReadUInt16();
@@ -2426,64 +2614,44 @@ namespace Assistant
 					}
 				case 0x10: // Equip Info
 					{
-						uint attrib = 0;
-						if (World.Player != null)
-						{
-							uint serial = p.ReadUInt32();
-							uint info = p.ReadUInt32();
-							uint owner = p.ReadUInt32();
-							if (owner == 0xFFFFFFFD)
-							{
-								ushort nameLengh = p.ReadUInt16();
-								string ownername = p.ReadString(nameLengh);
-								World.Player.Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(ownername, "System", 1, World.FindItem(serial).Name, (int)serial));          // Journal buffer
-								if (World.Player.Journal.Count > 100)
-								{
-									RazorEnhanced.Journal.JournalEntry ra;
-									World.Player.Journal.TryDequeue(out ra);
-								}
+                        if (World.Player != null)
+                        {
+                            uint serial = p.ReadUInt32();
+                            uint info = p.ReadUInt32();
+                            uint owner = p.ReadUInt32();
+                            uint attrib;
+                            if (owner == 0xFFFFFFFD)
+                            {
+                                ushort nameLengh = p.ReadUInt16();
+                                string ownername = p.ReadString(nameLengh);
+                                Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(ownername, "System", 1, World.FindItem(serial).Name, (int)serial));          // Journal buffer
 
-								attrib = p.ReadUInt32();
-							}
-							else
-								attrib = owner;
+                                attrib = p.ReadUInt32();
+                            }
+                            else
+                                attrib = owner;
 
-							if (attrib != 0xFFFFFFFC)
-							{
-								while (attrib != 0xFFFFFFFF)
-								{
-									try
-									{
-										ushort charge = p.ReadUInt16();
-										World.Player.Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(charge.ToString(), "System", 1, World.FindItem(serial).Name, (int)serial));          // Journal buffer
-										if (World.Player.Journal.Count > 100)
-										{
-											RazorEnhanced.Journal.JournalEntry ra;
-											World.Player.Journal.TryDequeue(out ra);
-										}
+                            if (attrib != 0xFFFFFFFC)
+                            {
+                                while (attrib != 0xFFFFFFFF)
+                                {
+                                    try
+                                    {
+                                        ushort charge = p.ReadUInt16();
+                                        Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(charge.ToString(), "System", 1, World.FindItem(serial).Name, (int)serial));          // Journal buffer
 
-										World.Player.Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(Language.GetCliloc((int)attrib), "System", 1, World.FindItem(serial).Name, (int)serial));          // Journal buffer
-										if (World.Player.Journal.Count > 100)
-										{
-											RazorEnhanced.Journal.JournalEntry ra;
-											World.Player.Journal.TryDequeue(out ra);
-										}
-										attrib = p.ReadUInt32();
-									}
-									catch { }
-								}
-							}
-							else
-							{
-								World.Player.Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry("Unidentified", "System", 1, World.FindItem(serial).Name, (int)serial));          // Journal buffer
-								if (World.Player.Journal.Count > 100)
-								{
-									RazorEnhanced.Journal.JournalEntry ra;
-									World.Player.Journal.TryDequeue(out ra);
-								}
-							}
-						}
-						break;
+                                        Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(Language.GetCliloc((int)attrib), "System", 1, World.FindItem(serial).Name, (int)serial));          // Journal buffer
+                                        attrib = p.ReadUInt32();
+                                    }
+                                    catch { }
+                                }
+                            }
+                            else
+                            {
+                                Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry("Unidentified", "System", 1, World.FindItem(serial).Name, (int)serial));          // Journal buffer
+                            }
+                        }
+                        break;
 					}
 				case 0x14: // context menu
 					{
@@ -2533,6 +2701,11 @@ namespace Assistant
 						}
 						World.Player.HasContext = true;
 						World.Player.ContextID = ser;
+                        if (DateTime.Now.CompareTo(HideContextUntil) < 0) {
+                            HideContextUntil = DateTime.Now;
+                            args.Block = true;
+                        }
+                         
                         break;
 					}
 				case 0x18: // map patches
@@ -2579,9 +2752,16 @@ namespace Assistant
 					}
 				case 0x21: // Special ability execute
 					{
-						RazorEnhanced.SpellGrid.UpdateSAHighLight(0);
-						World.Player.HasSpecial = SpecialMoves.HasPrimary = SpecialMoves.HasSecondary = false;
-						break;
+                        if (World.Player.HasSpecial)
+                        {
+                            World.Player.HasSpecial = false;
+                            SpecialMoves.HasPrimary = false;
+                            SpecialMoves.HasSecondary = false;
+
+                            System.Threading.Thread doAction = new System.Threading.Thread(() => RazorEnhanced.SpellGrid.UpdateSAHighLight(0));
+                            doAction.Start();
+                        }
+                        break;
 					}
 				case 0x25: // Toggle Special Moves (skills icon red or white)
 					{
@@ -2597,7 +2777,8 @@ namespace Assistant
 									if (World.Player != null && !World.Player.SkillEnabled.Contains(skill))
 									{
 										World.Player.SkillEnabled.Add(skill);
-										RazorEnhanced.SpellGrid.UpdateSkillHighLight(skill, true);
+                                        System.Threading.Thread doAction = new System.Threading.Thread(() => RazorEnhanced.SpellGrid.UpdateSkillHighLight(skill, true));
+                                        doAction.Start();
 									}
 									break;
 
@@ -2605,7 +2786,8 @@ namespace Assistant
 									if (World.Player != null && World.Player.SkillEnabled.Contains(skill))
 									{
 										World.Player.SkillEnabled.Remove(skill);
-										RazorEnhanced.SpellGrid.UpdateSkillHighLight(skill, false);
+                                        System.Threading.Thread doAction = new System.Threading.Thread(() => RazorEnhanced.SpellGrid.UpdateSkillHighLight(skill, false));
+                                        doAction.Start();
 									}
 									break;
 							}
@@ -2676,7 +2858,7 @@ namespace Assistant
 			}
 		}
 
-		private static List<Serial> m_Party = new List<Serial>();
+		private static readonly List<Serial> m_Party = new List<Serial>();
 		internal static List<Serial> Party { get { return m_Party; } }
 		private static Timer m_PartyDeclineTimer = null;
 		internal static Serial PartyLeader = Serial.Zero;
@@ -2726,12 +2908,7 @@ namespace Assistant
 					{
 						Serial from = p.ReadUInt32();
 						string text = p.ReadUnicodeStringSafe();
-						World.Player.Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(text, "Party", 0, "null", from));          // Journal buffer
-						if (World.Player.Journal.Count > 100)
-						{
-							RazorEnhanced.Journal.JournalEntry ra;
-							World.Player.Journal.TryDequeue(out ra);
-						}
+						Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(text, "Party", 0, "null", from));          // Journal buffer
 						break;
 					}
 				case 0x07: // party invite
@@ -2796,19 +2973,25 @@ namespace Assistant
 			{
 				case 0x19: // set ability
 					{
-						int ability = 0;
-						if (p.ReadByte() == 0)
-						{
-							ability = p.ReadInt32();
-							RazorEnhanced.SpellGrid.UpdateSAHighLight(ability);
-							World.Player.HasSpecial = true;
-						}
-						break;
+                        if (p.ReadByte() == 0)
+                        {
+                            int ability = p.ReadInt32();
+                            SpecialMoves.ClientSentSpecial(ability);
+                            System.Threading.Thread doAction = new System.Threading.Thread(() => RazorEnhanced.SpellGrid.UpdateSAHighLight(0));
+                            doAction.Start();
+
+                            //RazorEnhanced.SpellGrid.UpdateSAHighLight(ability);      
+                        }
+                        else 
+                        {
+                            World.Player.HasSpecial = false;
+                        }
+                        break;
 					}
 			}
 		}
-
-		private static string m_LastPW = "";
+    
+    private static string m_LastPW = "";
 
 		private static void ServerListLogin(Packet p, PacketHandlerEventArgs args)
 		{
@@ -2978,12 +3161,16 @@ namespace Assistant
 			ushort iid = p.ReadUInt16();
 			ushort hue = p.ReadUInt16();
 
-			if (serial == Serial.MinusOne)
-			{
-				if (HueEntry.Callback != null)
-					HueEntry.Callback(hue);
-				args.Block = true;
-			}
+            if (serial == Serial.MinusOne || HueEntry.Callback != null)
+            {
+                args.Block = true;
+            }
+
+            if (HueEntry.Callback != null)
+            {
+                HueEntry.Callback(serial, iid, hue);
+            }
+            
 		}
 
 		private static void ClientAsciiPromptResponse(PacketReader p, PacketHandlerEventArgs args)
@@ -3014,12 +3201,18 @@ namespace Assistant
 		private static void TrackingArrow(PacketReader p, PacketHandlerEventArgs args)
 		{
             byte active = p.ReadByte();
+            Mobiles.lastTrackingInfo = new Mobiles.TrackingInfo();   // Don't change the old, create a new immutable object.
             Mobiles.lastTrackingInfo.x  = p.ReadUInt16();
             Mobiles.lastTrackingInfo.y = p.ReadUInt16();
             Mobiles.lastTrackingInfo.serial = p.ReadUInt32();
             Mobiles.lastTrackingInfo.lastUpdate = DateTime.Now;
-            System.Diagnostics.Debug.WriteLine("Serial: 0x{0:X} at x:{1} y:{2}",
-                Mobiles.lastTrackingInfo.serial, Mobiles.lastTrackingInfo.x, Mobiles.lastTrackingInfo.y);
+
+            System.Diagnostics.Debug.WriteLine(
+                "Serial: 0x{0:X} at x:{1} y:{2}",
+                Mobiles.lastTrackingInfo.serial, 
+                Mobiles.lastTrackingInfo.x, 
+                Mobiles.lastTrackingInfo.y
+            );
         }
 
         private static void PersonalLight(PacketReader p, PacketHandlerEventArgs args)
@@ -3047,7 +3240,7 @@ namespace Assistant
 			World.Player.Warmode = p.ReadBoolean();
 		}
 
-		private static void CustomHouseInfo(PacketReader p, PacketHandlerEventArgs args)
+		internal static void CustomHouseInfo(PacketReader p, PacketHandlerEventArgs args)
 		{
 			p.ReadByte(); // compression
 			p.ReadByte(); // Unknown
@@ -3060,21 +3253,44 @@ namespace Assistant
 			}
 		}
 
-		private static void CompressedGump(PacketReader p, PacketHandlerEventArgs args)
+		internal static void CompressedGump(PacketReader p, PacketHandlerEventArgs args)
 		{
+			// Packet Build
+			// BYTE[1] Cmd
+			// BYTE[2] len
+			// BYTE[4] Player Serial
+			// BYTE[4] Gump ID
+			// BYTE[4] x
+			// BYTE[4] y
+			// BYTE[4] Compressed Gump Layout Length(CLen)
+			// BYTE[4] Decompressed Gump Layout Length(DLen)
+			// BYTE[CLen - 4] Gump Data, zlib compressed
+			// BYTE[4] Number of text lines
+			// BYTE[4] Compressed Text Line Length(CTxtLen)
+			// BYTE[4] Decompressed Text Line Length(DTxtLen)
+			// BYTE[CTxtLen - 4] Gump's Compressed Text data, zlib compressed
+			//
+			// Notes
+			// text lines is in Big - Endian Unicode formate, not NULL terminated
+			// loop:
+			// 	BYTE[2] Length
+			// 	BYTE[Length * 2] text
+			// endloop
+
 			if (World.Player == null)
 				return;
 
-			uint currentgumps = p.ReadUInt32();
-			uint currentgumpi = p.ReadUInt32();
+			uint currentgumps = p.ReadUInt32(); // Player Serial
+			uint currentgumpi = p.ReadUInt32(); // Gump ID
 			try
 			{
-				int x = p.ReadInt32(), y = p.ReadInt32();
+				int x = p.ReadInt32(), y = p.ReadInt32(); // Position
 
+				// Decompression of Gump layout section
 				PacketReader pr = p.GetCompressedReader();
 				string layout = pr.ReadString();
 
-				int numStrings = p.ReadInt32();
+				int numStrings = p.ReadInt32(); // Number of text lines
 				if (numStrings < 0 || numStrings > 256)
 					numStrings = 0;
 
@@ -3082,37 +3298,55 @@ namespace Assistant
 				World.Player.CurrentGumpStrings.Clear();
 				World.Player.CurrentGumpTile.Clear();
 
+				// Parsing the uncompressed Gump Layout section
+				// It is looking for all numbers and if one is a valid index for the cliloc, will be converted into string
 				string[] numbers = Regex.Split(layout, @"\D+");
 				foreach (string value in numbers)
 				{
 					if (!string.IsNullOrEmpty(value))
 					{
 						int i = int.Parse(value);
+						// If this is a valid id of a cliloc string
 						if ((i >= 500000 && i <= 503405) || (i >= 1000000 && i <= 1155584) || (i >= 3000000 && i <= 3011032))
 							World.Player.CurrentGumpStrings.Add(Language.GetString(i));
 					}
 				}
 
+				// Decompressing text data
 				PacketReader pComp = p.GetCompressedReader();
 				int len = 0;
 				int x1 = 0;
-				string[] stringlistparse = new string[numStrings];
+				string[] stringlistparse = new string[numStrings+10]; // + 10 is just a little extra room
 
-				while (!pComp.AtEnd && (len = pComp.ReadInt16()) > 0)
+				// This reads all the text data
+				// The separator for each section seems to be 4 words all 0s
+				// Each string starts with a word containing the length of the number of chars (unicode) to read
+
+				//while (!pComp.AtEnd && (len = pComp.ReadInt16()) > 0) // This seems not valid on OSI server that sometimes sends zeros
+				while ((!pComp.AtEnd) && (x1 < stringlistparse.Length))
 				{
-					string tempstring = pComp.ReadUnicodeString(len);
-					stringlistparse[x1] = tempstring;
-					x1++;
+					len = pComp.ReadInt16();
+					if (len > 0)
+					{
+						string tempstring = pComp.ReadUnicodeString(len);
+						stringlistparse[x1] = tempstring;
+                        x1++;
+                    }
+					else
+                    {
+						stringlistparse[x1] = "";
+					}
 				}
 
 				if (TryParseGump(layout, out string[] gumpPieces))
 				{
 					ParseGumpString(gumpPieces, stringlistparse);
 				}
-				RazorEnhanced.GumpInspector.NewGumpCompressedAddLog(World.Player.CurrentGumpS, World.Player.CurrentGumpI);
+				RazorEnhanced.GumpInspector.NewGumpCompressedAddLog(currentgumps, currentgumpi);
 
 				World.Player.CurrentGumpRawData = layout; // Get raw data of current gump
-				}
+				World.Player.CurrentGumpRawText = stringlistparse; // Get raw text data of current gump
+			}
 
 			catch { }
 

@@ -80,7 +80,7 @@ namespace RazorEnhanced
 							return;
 						}
 
-						if (item.RootContainer == World.Player)
+						if (item.IsLootableTarget)
 						{
 							ScavengerSerialToGrab.TryDequeue(out itemserial);
 							return;
@@ -148,7 +148,7 @@ namespace RazorEnhanced
 			Thread.Sleep(250);
 		}
 
-        private static System.Object autolootLock = new System.Object();
+        private static readonly System.Object autolootLock = new System.Object();
         internal static void ProcessLootList(uint lootbag)
         {
             if (Monitor.TryEnter(autolootLock)) try
@@ -169,7 +169,7 @@ namespace RazorEnhanced
                                     return;
                                 }
 
-                                if (item.RootContainer == World.Player)
+                                if (item.IsLootableTarget)
                                 {
                                     AutoLoot.SerialToGrabList.TryDequeue(out data);
                                     return;

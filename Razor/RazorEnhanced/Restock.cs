@@ -10,25 +10,29 @@ using System.Windows.Forms;
 
 namespace RazorEnhanced
 {
+    /// <summary>
+    /// The Restock class allow you to interact with the Restock Agent, via scripting.
+    /// </summary>
+
 	public class Restock
 	{
 		private static int m_dragdelay;
-		private static int m_sorucebag;
+		private static int m_sourceBag;
 		private static int m_destinationbag;
 		private static string m_restocklist;
 
 		public class RestockItem : ListAbleItem
 		{
-			private string m_Name;
+			private readonly string m_Name;
 			public string Name { get { return m_Name; } }
 
-			private int m_Graphics;
+			private readonly int m_Graphics;
 			public int Graphics { get { return m_Graphics; } }
 
-			private int m_Color;
+			private readonly int m_Color;
 			public int Color { get { return m_Color; } }
 
-			private int m_amountlimit;
+			private readonly int m_amountlimit;
 			public int AmountLimit { get { return m_amountlimit; } }
 
 			[JsonProperty("Selected")]
@@ -46,19 +50,19 @@ namespace RazorEnhanced
 
 		internal class RestockList
 		{
-			private string m_Description;
+			private readonly string m_Description;
 			internal string Description { get { return m_Description; } }
 
-			private int m_Delay;
+			private readonly int m_Delay;
 			internal int Delay { get { return m_Delay; } }
 
-			private int m_Source;
+			private readonly int m_Source;
 			internal int Source { get { return m_Source; } }
 
-			private int m_Destination;
+			private readonly int m_Destination;
 			internal int Destination { get { return m_Destination; } }
 
-			private bool m_Selected;
+			private readonly bool m_Selected;
 			[JsonProperty("Selected")]
 			internal bool Selected { get { return m_Selected; } }
 
@@ -91,11 +95,11 @@ namespace RazorEnhanced
 
 		internal static int RestockSource
 		{
-			get { return m_sorucebag; }
+			get { return m_sourceBag; }
 
 			set
 			{
-				m_sorucebag = value;
+				m_sourceBag = value;
 				Assistant.Engine.MainWindow.SafeAction(s => s.RestockSourceLabel.Text = "0x" + value.ToString("X8"));
 			}
 		}
@@ -156,8 +160,8 @@ namespace RazorEnhanced
 				if (row.IsNewRow)
 					continue;
 
-				int color = 0;
-				if ((string)row.Cells[3].Value == "All")
+                int color;
+                if ((string)row.Cells[3].Value == "All")
 					color = -1;
 				else
 					color = Convert.ToInt32((string)row.Cells[3].Value, 16);
@@ -174,29 +178,33 @@ namespace RazorEnhanced
 		{
 			List<RestockList> lists = Settings.Restock.ListsRead();
 
-			Assistant.Engine.MainWindow.RestockDataGridView.Rows.Clear();
-
 			foreach (RestockList l in lists)
 			{
 				if (l.Selected)
 				{
-					List<Restock.RestockItem> items = Settings.Restock.ItemsRead(l.Description);
-
-					foreach (RestockItem item in items)
-					{
-						string color = "All";
-						if (item.Color != -1)
-							color = "0x" + item.Color.ToString("X4");
-
-						Assistant.Engine.MainWindow.RestockDataGridView.Rows.Add(new object[] { item.Selected.ToString(), item.Name, "0x" + item.Graphics.ToString("X4"), color, item.AmountLimit.ToString() });
-					}
-
+					InitGrid(l.Description);
 					break;
 				}
 			}
 		}
+        internal static void InitGrid(string listName)
+        {
+            Assistant.Engine.MainWindow.RestockDataGridView.Rows.Clear();
 
-		internal static void CloneList(string newList)
+            List<Restock.RestockItem> items = Settings.Restock.ItemsRead(listName);
+
+            foreach (RestockItem item in items)
+            {
+                string color = "All";
+                if (item.Color != -1)
+                    color = "0x" + item.Color.ToString("X4");
+
+                Assistant.Engine.MainWindow.RestockDataGridView.Rows.Add(new object[] { item.Selected.ToString(), item.Name, "0x" + item.Graphics.ToString("X4"), color, item.AmountLimit.ToString() });
+            }
+        }
+
+
+        internal static void CloneList(string newList)
 		{
 			Settings.Restock.ListInsert(newList, RestockDelay, RestockSource, RestockDestination);
 
@@ -205,8 +213,8 @@ namespace RazorEnhanced
 				if (row.IsNewRow)
 					continue;
 
-				int color = 0;
-				if ((string)row.Cells[3].Value == "All")
+                int color;
+                if ((string)row.Cells[3].Value == "All")
 					color = -1;
 				else
 					color = Convert.ToInt32((string)row.Cells[3].Value, 16);
@@ -260,7 +268,48 @@ namespace RazorEnhanced
 			}
 		}
 
-		internal static int Engine(List<RestockItem> restockItemList, int mseconds, int sourceBagserial, int destinationBagserial)
+        public static void RunOnce(string restockerName, int sourceBag, int destBag, int dragDelay)
+        {
+
+            int bagsource;
+            int bagdestination;
+            int delay;
+            Settings.Restock.ListDetailsRead(restockerName, out bagsource, out bagdestination, out delay);
+
+            // Check Bag
+            if (sourceBag == -1)
+            {
+                sourceBag = bagsource;
+            }
+            Assistant.Item sbag = Assistant.World.FindItem(sourceBag);
+            if (sbag == null)
+            {
+                AddLog("Invalid Source Bag");
+                return;
+            }
+
+            if (destBag == -1)
+            {
+                destBag = bagdestination;
+            }
+            Assistant.Item dbag = Assistant.World.FindItem(destBag);
+            if (dbag == null)
+            {
+                AddLog("Invalid Destination Bag");
+                return;
+            }
+
+            if (dragDelay == -1)
+            {
+                dragDelay = delay;
+            }
+
+            List<RazorEnhanced.Restock.RestockItem> restockList = Settings.Restock.ItemsRead(restockerName);
+
+            int exit = Engine(restockList, dragDelay, sourceBag, destBag);
+        }
+
+        internal static int Engine(List<RestockItem> restockItemList, int mseconds, int sourceBagserial, int destinationBagserial)
 		{
 			Item sourceBag = Items.FindBySerial(sourceBagserial);
 			Item destinationBag = Items.FindBySerial(destinationBagserial);
@@ -316,7 +365,7 @@ namespace RazorEnhanced
 		internal static void Engine()
 		{
 			// Check Bag
-			Assistant.Item sbag = Assistant.World.FindItem(m_sorucebag);
+			Assistant.Item sbag = Assistant.World.FindItem(m_sourceBag);
 			if (sbag == null)
 			{
 				if (Settings.General.ReadBool("ShowAgentMessageCheckBox"))
@@ -335,7 +384,7 @@ namespace RazorEnhanced
 				return;
 			}
 
-			int exit = Engine(Settings.Restock.ItemsRead(m_restocklist), m_dragdelay, m_sorucebag, m_destinationbag);
+			int exit = Engine(Settings.Restock.ItemsRead(m_restocklist), m_dragdelay, m_sourceBag, m_destinationbag);
 		}
 
 		private static Thread m_RestockThread;
@@ -361,9 +410,20 @@ namespace RazorEnhanced
 			}
 		}
 
-		// Funzioni da script
+        // Funzioni da script
 
-		public static void FStart()
+
+
+
+        
+
+
+        
+
+        /// <summary>
+        /// Start the Restock Agent on the currently active list.
+        /// </summary>
+        public static void FStart()
 		{
 			if (Assistant.Engine.MainWindow.RestockExecute.Enabled == true)
 				Assistant.Engine.MainWindow.RestockStartExec();
@@ -373,6 +433,10 @@ namespace RazorEnhanced
 			}
 		}
 
+
+        /// <summary>
+        /// Stop the Restock Agent.
+        /// </summary>
 		public static void FStop()
 		{
 			if (Assistant.Engine.MainWindow.RestockExecute.Enabled == true)
@@ -383,6 +447,10 @@ namespace RazorEnhanced
 			}
 		}
 
+        /// <summary>
+        /// Check Restock Agent status
+        /// </summary>
+        /// <returns>True: if the Restock is running - False: otherwise</returns>
 		public static bool Status()
 		{
 			if (m_RestockThread != null && ((m_RestockThread.ThreadState & ThreadState.Running) != 0 || (m_RestockThread.ThreadState & ThreadState.WaitSleepJoin) != 0 || (m_RestockThread.ThreadState & ThreadState.AbortRequested) != 0) )
@@ -391,7 +459,12 @@ namespace RazorEnhanced
 				return false;
 		}
 
-		public static void ChangeList(string listName)
+
+        /// <summary>
+        /// Change the Restock's active list.
+        /// </summary>
+        /// <param name="listName">Name of an existing restock list.</param>
+        public static void ChangeList(string listName)
 		{
 			if (!UpdateListParam(listName))
 			{
@@ -402,12 +475,12 @@ namespace RazorEnhanced
 				if (Assistant.Engine.MainWindow.RestockStop.Enabled == true) // Se è in esecuzione forza stop change list e restart
 				{
 					Assistant.Engine.MainWindow.SafeAction(s => s.RestockStop.PerformClick());
-					Assistant.Engine.MainWindow.SafeAction(s => s.RestockListSelect.SelectedIndex = Assistant.Engine.MainWindow.RestockListSelect.Items.IndexOf(listName));  // change list
+					Assistant.Engine.MainWindow.SafeAction(s => { s.RestockListSelect.SelectedIndex = Assistant.Engine.MainWindow.RestockListSelect.Items.IndexOf(listName); InitGrid(listName); });  // change list
 					Assistant.Engine.MainWindow.SafeAction(s => s.RestockExecute.PerformClick());
 				}
 				else
 				{
-					Assistant.Engine.MainWindow.SafeAction(s => s.RestockListSelect.SelectedIndex = s.RestockListSelect.Items.IndexOf(listName));  // change list
+					Assistant.Engine.MainWindow.SafeAction(s => { s.RestockListSelect.SelectedIndex = s.RestockListSelect.Items.IndexOf(listName); InitGrid(listName); });  // change list
 				}
 			}
 		}

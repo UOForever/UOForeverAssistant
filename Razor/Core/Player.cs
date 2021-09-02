@@ -29,7 +29,7 @@ namespace Assistant
 		private ushort m_Base;
 		private ushort m_Cap;
 		private short m_Delta;
-		private int m_Idx;
+		private readonly int m_Idx;
 
 		internal Skill(int idx)
 		{
@@ -207,7 +207,7 @@ namespace Assistant
 		private LockType m_StrLock, m_DexLock, m_IntLock;
 		private uint m_Gold;
 		private ushort m_Weight;
-		private Skill[] m_Skills;
+		private readonly Skill[] m_Skills;
 		private ushort m_AR;
 		private ushort m_StatCap;
 		private byte m_Followers;
@@ -217,13 +217,14 @@ namespace Assistant
 		private byte m_GlobalLight;
 		private ushort m_Features;
 		private byte m_Season;
+		private byte m_ForcedSeason;
 		private int[] m_MapPatches = new int[10];
 
 		private bool m_SkillsSent;
 
 		//private Item m_Holding;
 		//private ushort m_HoldAmt;
-		private ConcurrentDictionary<byte, MoveEntry> m_MoveInfo;
+		private readonly ConcurrentDictionary<byte, MoveEntry> m_MoveInfo;
 
 		private Timer m_CriminalTime;
 		private DateTime m_CriminalStart = DateTime.MinValue;
@@ -231,10 +232,10 @@ namespace Assistant
 
 		internal static int FastWalkKey = 0;
 
-		private List<BuffIcon> m_Buffs = new List<BuffIcon>();
+		private readonly List<BuffIcon> m_Buffs = new List<BuffIcon>();
 		internal List<BuffIcon> Buffs { get { return m_Buffs; } }
 
-		private List<SkillIcon> m_SkillEnabled = new List<SkillIcon>();
+		private readonly List<SkillIcon> m_SkillEnabled = new List<SkillIcon>();
 		internal List<SkillIcon> SkillEnabled { get { return m_SkillEnabled; } }
 
 
@@ -394,7 +395,15 @@ namespace Assistant
 			set { m_Tithe = value; }
 		}
 
-		internal short HitChanceIncrease
+        internal short MaxPhysicResistence { get; set; }
+        internal short MaxFireResistence { get; set; }
+        internal short MaxColdResistence { get; set; }
+        internal short MaxPoisonResistence { get; set; }
+        internal short MaxEnergyResistence { get; set; }
+        //internal short DefenseChanceIncrease { get; set; }
+        internal short MaxDefenseChanceIncrease { get; set; }
+
+        internal short HitChanceIncrease
 		{
 			get { return m_HitChanceIncrease; }
 			set { m_HitChanceIncrease = value; }
@@ -583,7 +592,7 @@ namespace Assistant
 			return m_MoveInfo[seq];
 		}
 
-		private static Timer m_OpenDoorReq = Timer.DelayedCallback(TimeSpan.FromSeconds(0.005), new TimerCallback(OpenDoor));
+		private static readonly Timer m_OpenDoorReq = Timer.DelayedCallback(TimeSpan.FromSeconds(0.005), new TimerCallback(OpenDoor));
 
 		private static void OpenDoor()
 		{
@@ -618,13 +627,13 @@ namespace Assistant
 				int x = Position.X, y = Position.Y;
 				Utility.Offset(e.Dir, ref x, ref y);
 
-				int z = CalcZ;
+				int z = Position.Z;
 
 				foreach (Item i in World.Items.Values)
 				{
 					if (i.Position.X == x && i.Position.Y == y)
 						if (i.IsDoor)
-							if (i.Position.Z - 15 <= z && i.Position.Z + 15 >= z)
+							if (i.Position.Z - 20 <= z && i.Position.Z + 20 >= z)
 								if (m_LastDoor != i.Serial || m_LastDoorTime + TimeSpan.FromSeconds(1) < DateTime.Now)
 								{
 									m_LastDoor = i.Serial;
@@ -661,10 +670,10 @@ namespace Assistant
 
 				Utility.Offset(dir & Direction.mask, ref x, ref y);
 
-				int newZ = Position.Z;
-				try { newZ = Assistant.Facet.ZTop(Map, x, y, newZ); }
-				catch { }
-				Position = new Point3D(x, y, newZ);
+				//int newZ = Position.Z;
+				//try { newZ = Assistant.Facet.ZTop(Map, x, y, newZ); }
+				//catch { }
+				Position = new Point3D(x, y, Position.Z);
 			}
 			Direction = dir;
 		}
@@ -755,6 +764,40 @@ namespace Assistant
 			}
 		}
 
+		internal static int GetZ(int x, int y, int z)
+		{
+			unsafe  {
+				if (DLLImport.Razor.IsCalibrated())
+				{
+					if (DLLImport.Razor.GetPosition(null, null, &z))
+						return z;
+				}
+			}
+			return Facet.ZTop(World.Player.Map, x, y, z);
+		}
+
+		internal override Point3D Position
+		{
+			// IsCalibrated is always false on CUO and true on OSI client
+			get
+			{
+				if (m_ExternZ && DLLImport.Razor.IsCalibrated())
+				{
+					Point3D p = new Point3D(base.Position);
+					p.Z = GetZ(p.X, p.Y, p.Z);
+					return p;
+				}
+				else
+				{
+					return base.Position;
+				}
+			}
+			set
+			{
+				base.Position = value;
+			}
+		}
+
 
 		internal override void OnPositionChanging(Point3D newPos)
 		{
@@ -798,7 +841,7 @@ namespace Assistant
 
 			foreach (Item i in itemlist)
 			{
-				if (i.RootContainer != World.Player)
+				if (i != World.Player.Backpack && i.RootContainer != World.Player.Backpack)
 					i.Remove();
 			}
 
@@ -848,7 +891,7 @@ namespace Assistant
 
 		private class CriminalTimer : Timer
 		{
-			private PlayerData m_Player;
+			private readonly PlayerData m_Player;
 
 			internal CriminalTimer(PlayerData player)
 				: base(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1))
@@ -937,7 +980,7 @@ namespace Assistant
 		internal List<int> CurrentGumpTile = new List<int>();
 		internal List<string> CurrentGumpStrings = new List<string>();
 		internal string CurrentGumpRawData;
-		internal ConcurrentQueue<RazorEnhanced.Journal.JournalEntry> Journal = new ConcurrentQueue<RazorEnhanced.Journal.JournalEntry>();
+		internal string[] CurrentGumpRawText;
 		internal uint LastWeaponRight, LastWeaponLeft = 0;
 
 		// Menu Old
@@ -951,13 +994,13 @@ namespace Assistant
 
 		internal class MenuItem
 		{
-			private ushort m_modelID;
+			private readonly ushort m_modelID;
 			public ushort ModelID { get { return m_modelID; } }
 
-			private ushort m_modelColor;
+			private readonly ushort m_modelColor;
 			public ushort ModelColor { get { return m_modelColor; } }
 
-			private string m_modelText;
+			private readonly string m_modelText;
 			public string ModelText { get { return m_modelText; } }
 
 			public MenuItem(ushort modelid, ushort modelcolor, string modeltext)
@@ -982,6 +1025,7 @@ namespace Assistant
 		internal sbyte LocalLightLevel { get { return m_LocalLight; } set { m_LocalLight = value; } }
 		internal byte GlobalLightLevel { get { return m_GlobalLight; } set { m_GlobalLight = value; } }
 		internal byte Season { get { return m_Season; } set { m_Season = value; } }
+		internal byte ForcedSeason { get { return m_ForcedSeason; } set { m_ForcedSeason = value; } }
 		internal ushort Features { get { return m_Features; } set { m_Features = value; } }
 		internal int[] MapPatches { get { return m_MapPatches; } set { m_MapPatches = value; } }
 
@@ -1055,7 +1099,7 @@ namespace Assistant
 		}
 
 		// Set last weapon on login
-		private Timer m_HandCheck = Timer.DelayedCallback(TimeSpan.FromSeconds(3.0), new TimerCallback(HandCheck));
+		private readonly Timer m_HandCheck = Timer.DelayedCallback(TimeSpan.FromSeconds(3.0), new TimerCallback(HandCheck));
 
 		private static void HandCheck()
 		{

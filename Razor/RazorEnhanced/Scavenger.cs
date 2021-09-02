@@ -11,6 +11,9 @@ using System.Windows.Forms;
 
 namespace RazorEnhanced
 {
+    /// <summary>
+    /// The Scavenger class allow you to interect with the Scavenger Agent, via scripting.
+    /// </summary>
     public class Scavenger
     {
         private static int m_lootdelay;
@@ -23,13 +26,13 @@ namespace RazorEnhanced
         {
             public class Property
             {
-                private string m_Name;
+                private readonly string m_Name;
                 public string Name { get { return m_Name; } }
 
-                private int m_Minimum;
+                private readonly int m_Minimum;
                 public int Minimum { get { return m_Minimum; } }
 
-                private int m_Maximum;
+                private readonly int m_Maximum;
                 public int Maximum { get { return m_Maximum; } }
 
                 public Property(string name, int minimum, int maximum)
@@ -39,19 +42,19 @@ namespace RazorEnhanced
                     m_Maximum = maximum;
                 }
             }
-            private string m_Name;
+            private readonly string m_Name;
             public string Name { get { return m_Name; } }
 
-            private int m_Graphics;
+            private readonly int m_Graphics;
             public int Graphics { get { return m_Graphics; } }
 
-            private int m_Color;
+            private readonly int m_Color;
             public int Color { get { return m_Color; } }
 
             [JsonProperty("Selected")]
             internal bool Selected { get; set; }
 
-            private List<Property> m_Properties;
+            private readonly List<Property> m_Properties;
             public List<Property> Properties { get { return m_Properties; } }
 
             public ScavengerItem(string name, int graphics, int color, bool selected, List<Property> properties)
@@ -66,19 +69,19 @@ namespace RazorEnhanced
 
         internal class ScavengerList
         {
-            private string m_Description;
+            private readonly string m_Description;
             internal string Description { get { return m_Description; } }
 
-            private int m_Delay;
+            private readonly int m_Delay;
             internal int Delay { get { return m_Delay; } }
 
-            private int m_Range;
+            private readonly int m_Range;
             internal int Range { get { return m_Range; } }
 
-            private int m_Bag;
+            private readonly int m_Bag;
             internal int Bag { get { return m_Bag; } }
 
-            private bool m_Selected;
+            private readonly bool m_Selected;
             [JsonProperty("Selected")]
             internal bool Selected { get { return m_Selected; } }
 
@@ -178,27 +181,31 @@ namespace RazorEnhanced
         {
             List<ScavengerList> lists = Settings.Scavenger.ListsRead();
 
-            Assistant.Engine.MainWindow.ScavengerDataGridView.Rows.Clear();
-
             foreach (ScavengerList l in lists)
             {
                 if (l.Selected)
                 {
-                    List<Scavenger.ScavengerItem> items = Settings.Scavenger.ItemsRead(l.Description);
-
-                    foreach (ScavengerItem item in items)
-                    {
-                        string color = "All";
-                        if (item.Color != -1)
-                            color = "0x" + item.Color.ToString("X4");
-
-                        Assistant.Engine.MainWindow.ScavengerDataGridView.Rows.Add(new object[] { item.Selected.ToString(), item.Name, "0x" + item.Graphics.ToString("X4"), color, item.Properties });
-                    }
-
+                    InitGrid(l.Description);
                     break;
                 }
             }
         }
+        internal static void InitGrid(string listName)
+        {
+            Assistant.Engine.MainWindow.ScavengerDataGridView.Rows.Clear();
+
+            List<Scavenger.ScavengerItem> items = Settings.Scavenger.ItemsRead(listName);
+
+            foreach (ScavengerItem item in items)
+            {
+                string color = "All";
+                if (item.Color != -1)
+                    color = "0x" + item.Color.ToString("X4");
+
+                Assistant.Engine.MainWindow.ScavengerDataGridView.Rows.Add(new object[] { item.Selected.ToString(), item.Name, "0x" + item.Graphics.ToString("X4"), color, item.Properties });
+            }
+        }
+
 
         internal static void CopyTable()
         {
@@ -211,7 +218,7 @@ namespace RazorEnhanced
                 if (row.IsNewRow)
                     continue;
 
-                int color = 0;
+                int color;
                 if ((string)row.Cells[3].Value == "All")
                     color = -1;
                 else
@@ -238,7 +245,7 @@ namespace RazorEnhanced
                 if (row.IsNewRow)
                     continue;
 
-                int color = 0;
+                int color;
                 if ((string)row.Cells[3].Value == "All")
                     color = -1;
                 else
@@ -371,14 +378,14 @@ namespace RazorEnhanced
             DragDropManager.ScavengerSerialToGrab = new ConcurrentQueue<int>();
         }
 
-        private static Items.Filter m_itemfilter = new Items.Filter
+        private static readonly Items.Filter m_itemfilter = new Items.Filter
         {
             Movable = -1,
             OnGround = 1,
             Enabled = true
         };
 
-        private static Items.Filter m_itemfilterOsi = new Items.Filter
+        private static readonly Items.Filter m_itemfilterOsi = new Items.Filter
         {
             Movable = -1,
             OnGround = 1,
@@ -399,7 +406,20 @@ namespace RazorEnhanced
         }
 
         // Funzioni da script
-        public static void RunOnce(List<ScavengerItem> scavengerList, int mseconds, Items.Filter filter)
+
+       
+
+
+
+
+        /// <summary>   
+        /// @nodoc
+        /// Run the Scavenger Agent once on the currently active list, for a given amount of time, using a filter. 
+        /// </summary>
+        /// <param name="scavengerList"></param>
+        /// <param name="millisec"></param>
+        /// <param name="filter"></param>
+        public static void RunOnce(List<ScavengerItem> scavengerList, int millisec, Items.Filter filter)
         {
             if (Assistant.Engine.MainWindow.ScavengerCheckBox.Checked == true)
             {
@@ -407,18 +427,26 @@ namespace RazorEnhanced
             }
             else
             {
-                Engine(scavengerList, mseconds, filter);
+                Engine(scavengerList, millisec, filter);
             }
         }
 
+        /// <summary>
+        /// @nodoc
+        /// </summary>
         static bool lootChangeMsgSent = false;
+
+        /// <summary>
+        /// Get current Scravenger destination container.
+        /// </summary>
+        /// <returns>Serial of the container.</returns>
         public static uint GetScavengerBag()
         {
             // Check bag
             Assistant.Item bag = Assistant.World.FindItem(Scavenger.ScavengerBag);
             if (bag != null)
             {
-                if (bag.RootContainer != World.Player)
+                if (!bag.IsLootableTarget)
                 {
                     if (!lootChangeMsgSent)
                     {
@@ -443,6 +471,12 @@ namespace RazorEnhanced
             return bag.Serial.Value;
         }
 
+        
+
+
+        /// <summary>
+        /// Start the Scavenger Agent on the currently active list.
+        /// </summary>
         public static void Start()
         {
             if (Assistant.Engine.MainWindow.ScavengerCheckBox.Checked == true)
@@ -453,6 +487,9 @@ namespace RazorEnhanced
                 Assistant.Engine.MainWindow.SafeAction(s => s.ScavengerCheckBox.Checked = true);
         }
 
+        /// <summary>
+        /// Stop the Scavenger Agent.
+        /// </summary>
         public static void Stop()
         {
             if (Assistant.Engine.MainWindow.ScavengerCheckBox.Checked == false)
@@ -463,11 +500,20 @@ namespace RazorEnhanced
                 Assistant.Engine.MainWindow.SafeAction(s => s.ScavengerCheckBox.Checked = false);
         }
 
+        /// <summary>
+        /// Check Scavenger Agent status
+        /// </summary>
+        /// <returns>True: if the Scavenger is running - False: otherwise</returns>
         public static bool Status()
         {
             return Assistant.Engine.MainWindow.ScavengerCheckBox.Checked;
         }
 
+
+        /// <summary>
+        /// Change the Scavenger's active list.
+        /// </summary>
+        /// <param name="listName">Name of an existing organizer list.</param>
         public static void ChangeList(string listName)
         {
             if (!UpdateListParam(listName))
@@ -479,12 +525,12 @@ namespace RazorEnhanced
                 if (Assistant.Engine.MainWindow.ScavengerCheckBox.Checked == true) // Se è in esecuzione forza stop change list e restart
                 {
                     Assistant.Engine.MainWindow.SafeAction(s => s.ScavengerCheckBox.Checked = false);
-                    Assistant.Engine.MainWindow.SafeAction(s => s.ScavengerListSelect.SelectedIndex = s.ScavengerListSelect.Items.IndexOf(listName));  // change list
+                    Assistant.Engine.MainWindow.SafeAction(s => {s.ScavengerListSelect.SelectedIndex = s.ScavengerListSelect.Items.IndexOf(listName); InitGrid(listName); }) ;  // change list
                     Assistant.Engine.MainWindow.SafeAction(s => s.ScavengerCheckBox.Checked = true);
                 }
                 else
                 {
-                    Assistant.Engine.MainWindow.SafeAction(s => s.ScavengerListSelect.SelectedIndex = s.ScavengerListSelect.Items.IndexOf(listName));  // change list
+                    Assistant.Engine.MainWindow.SafeAction(s => { s.ScavengerListSelect.SelectedIndex = s.ScavengerListSelect.Items.IndexOf(listName); InitGrid(listName); });  // change list
                 }
             }
         }
@@ -504,7 +550,7 @@ namespace RazorEnhanced
         }
 
         // Autostart al login
-        private static Assistant.Timer m_autostart = Assistant.Timer.DelayedCallback(TimeSpan.FromSeconds(3.0), new Assistant.TimerCallback(Start));
+        private static readonly Assistant.Timer m_autostart = Assistant.Timer.DelayedCallback(TimeSpan.FromSeconds(3.0), new Assistant.TimerCallback(Start));
 
         internal static void LoginAutostart()
         {

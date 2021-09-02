@@ -16,6 +16,9 @@ using System.Text;
 using FastColoredTextBoxNS;
 using IronPython.Compiler;
 using System.Text.RegularExpressions;
+using Microsoft.CSharp;
+using System.CodeDom.Compiler;
+using System.Reflection;
 
 namespace RazorEnhanced.UI
 {
@@ -44,9 +47,9 @@ namespace RazorEnhanced.UI
 		internal static FastColoredTextBox EnhancedScriptEditorTextArea { get { return m_EnhancedScriptEditor.fastColoredTextBoxEditor; } }
 		private static ConcurrentQueue<Command> m_Queue = new ConcurrentQueue<Command>();
 		private static Command m_CurrentCommand = Command.None;
-		private static AutoResetEvent m_WaitDebug = new AutoResetEvent(false);
+		private static readonly AutoResetEvent m_WaitDebug = new AutoResetEvent(false);
 
-		private string m_Title {
+		private string Title {
 			get
 			{
 				if (World.Player != null)
@@ -64,10 +67,10 @@ namespace RazorEnhanced.UI
 		private string m_Filename = String.Empty;
 		private string m_Filepath = String.Empty;
 
-		private PythonEngine m_pe;
-		private ScriptEngine m_Engine;
+		private readonly PythonEngine m_pe;
+		private readonly ScriptEngine m_Engine;
 		private ScriptSource m_Source;
-		private ScriptScope m_Scope;
+		private readonly ScriptScope m_Scope;
 
 		private TraceBackFrame m_CurrentFrame;
 		private FunctionCode m_CurrentCode;
@@ -75,12 +78,12 @@ namespace RazorEnhanced.UI
 		private object m_CurrentPayload;
 		private int m_ThreadID;
 
-		private List<int> m_Breakpoints = new List<int>();
+		private readonly List<int> m_Breakpoints = new List<int>();
 
 		private volatile bool m_Breaktrace = false;
 		private bool m_onclosing = false;
 
-		private FastColoredTextBoxNS.AutocompleteMenu m_popupMenu;
+		private readonly FastColoredTextBoxNS.AutocompleteMenu m_popupMenu;
 
 		internal static void Init(string filename)
 		{
@@ -1313,8 +1316,6 @@ namespace RazorEnhanced.UI
                 .Union(descriptionVendor)
 				.ToDictionary(x => x.Key, x => x.Value);
 
-
-
             var autodocMethods = new Dictionary<string, ToolTipDescriptions>();
             foreach (var docitem in AutoDoc.GetPythonAPI().methods ) {
                 var method = (DocMethod)docitem;
@@ -1322,26 +1323,37 @@ namespace RazorEnhanced.UI
                 var prms_name = new List<String>();
                 var prms_type = new List<String>();
                 var prms_name_type = new List<String>();
+                var prms_name_type_desc = new List<String>();
                 foreach (var prm in method.paramList) {
                     prms_name.Add(prm.itemName);
                     prms_type.Add(prm.itemType);
-                    prms_name_type.Add(prm.itemType + " " + prm.itemName);
+                    
+
+                    string name_type = $"{prm.itemName}: {prm.itemType}";
+                    prms_name_type.Add(name_type);
+
+                    string name_type_desc = name_type;
+                    if (prm.itemDescription.Trim().Length>0) {
+                        name_type_desc += $"\n    {prm.itemDescription.Trim()}";
+                    }
+                    prms_name_type_desc.Add(name_type_desc); 
                 }
                 var methodSignNames = $"{methodName}({String.Join(",", prms_name)})";
                 var methodSignTypes = $"{methodName}({String.Join(",", prms_type)})";
                 var methodSignNameTypes = $"{methodName}({String.Join(",", prms_name_type)})";
 
                 var methodKey = methodSignNames;
-                tooltip = new ToolTipDescriptions(methodSignNames, prms_name_type.ToArray() , method.returnType, method.itemDescription.Trim()+"\n");
-                if (autodocMethods.ContainsKey(methodKey))
+
+                if (!autodocMethods.ContainsKey(methodKey)) {
+                    tooltip = new ToolTipDescriptions(methodSignNames, prms_name_type_desc.ToArray(), method.returnType, method.itemDescription.Trim() + "\n");
+                    autodocMethods.Add(methodKey, tooltip);
+                }
+                else
                 {
                     autodocMethods[methodKey].Notes += "\n"+ methodSignNameTypes;
                     if (method.itemDescription.Length > 0) {
-                        autodocMethods[methodKey].Notes += "\n" + method.itemDescription.Trim()+"\n---";
+                        autodocMethods[methodKey].Notes += "\n    " + method.itemDescription.Trim()+"\n";
                     }
-                }
-                else {
-                    autodocMethods.Add(methodKey, tooltip);
                 }
 
             }
@@ -1471,7 +1483,7 @@ namespace RazorEnhanced.UI
 			m_popupMenu.Items.MaximumSize = new Size(m_popupMenu.Items.Width + 20, m_popupMenu.Items.Height);
 			m_popupMenu.Items.Width = m_popupMenu.Items.Width + 20;
 
-			this.Text = m_Title;
+			this.Text = Title;
 
 			m_pe = new PythonEngine();
 			m_Engine = m_pe.engine;
@@ -1484,7 +1496,7 @@ namespace RazorEnhanced.UI
 			{
 				m_Filepath = filename;
 				m_Filename = Path.GetFileName(filename);
-				this.Text = m_Title;
+				this.Text = Title;
 				fastColoredTextBoxEditor.Text = File.ReadAllText(filename);
 			}
 		}
@@ -1690,10 +1702,32 @@ namespace RazorEnhanced.UI
                 m_Queue = new ConcurrentQueue<Command>();
 
                 string text = GetFastTextBoxText();
-                var checkUOS = text.Substring(0, 2);   // you want it to be UOS it better start with UOS style comment
-                if (checkUOS == "//")
+                if (text.Length >= 4 && text.Substring(0, 4).ToUpper() == "//C#")
+				{
+					CSharpEngine csharpEngine = CSharpEngine.Instance;
+
+					// If compile error occurs a SyntaxErrorException is thrown
+					bool compileErrors = csharpEngine.CompileFromText(text, out StringBuilder compileMessages, out Assembly assembly);
+					if (compileMessages.Length > 0)
+					{
+						SetErrorBox("C# compile warning:");
+						SetErrorBox(compileMessages.ToString());
+					}
+					csharpEngine.Execute(assembly);
+
+					SetErrorBox("Script " + m_Filename + " run completed!");
+					SetStatusLabel("IDLE", Color.DarkTurquoise);
+				} 
+                else if ((text.Length >= 2) && ((text.Substring(0, 2) == "//") || (text.Substring(0, 5).ToUpper() == "//UOS")) )   // you want it to be UOS it better start with UOS style comment
                 {
-                    string[] lines = text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+                    // Deprecation of // 
+					if ((text.Substring(0, 2) == "//") && !(text.Substring(0, 5).ToUpper() == "//UOS"))
+					{
+						string message = "WARNING: // header for UOS scripts is going to be deprecated. Please use //UOS instead";
+						SetErrorBox(message);
+						Misc.SendMessage(message);
+					}
+     				string[] lines = text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
                     UOSteamEngine uosteam = UOSteamEngine.Instance;
                     uosteam.Execute(lines);
                     SetErrorBox("Script " + m_Filename + " run completed!");
@@ -1728,7 +1762,7 @@ namespace RazorEnhanced.UI
                     SetStatusLabel("IDLE", Color.DarkTurquoise);
                 }
             }
-            catch (IronPython.Runtime.Exceptions.SystemExitException ex)
+            catch (IronPython.Runtime.Exceptions.SystemExitException )
             {
                 Stop();
                 // sys.exit - terminate the thread
@@ -1935,92 +1969,92 @@ namespace RazorEnhanced.UI
 			m_EnhancedScriptEditor.m_onclosing = false;
 		}
 
-		private void toolStripButtonPlay_Click(object sender, EventArgs e)
+		private void ToolStripButtonPlay_Click(object sender, EventArgs e)
 		{
 			Start(false);
 		}
 
-		private void toolStripButtonDebug_Click(object sender, EventArgs e)
+		private void ToolStripButtonDebug_Click(object sender, EventArgs e)
 		{
 			Start(true);
 		}
 
-		private void toolStripNextCall_Click(object sender, EventArgs e)
+		private void ToolStripNextCall_Click(object sender, EventArgs e)
 		{
 			EnqueueCommand(Command.Call);
 		}
 
-		private void toolStripButtonNextLine_Click(object sender, EventArgs e)
+		private void ToolStripButtonNextLine_Click(object sender, EventArgs e)
 		{
 			EnqueueCommand(Command.Line);
 		}
 
-		private void toolStripButtonNextReturn_Click(object sender, EventArgs e)
+		private void ToolStripButtonNextReturn_Click(object sender, EventArgs e)
 		{
 			EnqueueCommand(Command.Return);
 		}
 
-		private void toolStripButtonNextBreakpoint_Click(object sender, EventArgs e)
+		private void ToolStripButtonNextBreakpoint_Click(object sender, EventArgs e)
 		{
 			EnqueueCommand(Command.Breakpoint);
 		}
 
-		private void toolStripButtonStop_Click(object sender, EventArgs e)
+		private void ToolStripButtonStop_Click(object sender, EventArgs e)
 		{
 			Stop();
 		}
 
-		private void toolStripButtonAddBreakpoint_Click(object sender, EventArgs e)
+		private void ToolStripButtonAddBreakpoint_Click(object sender, EventArgs e)
 		{
 			AddBreakpoint();
 		}
 
-		private void toolStripButtonRemoveBreakpoints_Click(object sender, EventArgs e)
+		private void ToolStripButtonRemoveBreakpoints_Click(object sender, EventArgs e)
 		{
 			RemoveBreakpoint();
 		}
 
-		private void toolStripButtonOpen_Click(object sender, EventArgs e)
+		private void ToolStripButtonOpen_Click(object sender, EventArgs e)
 		{
 			Open();
 		}
 
-		private void toolStripButtonSave_Click(object sender, EventArgs e)
+		private void ToolStripButtonSave_Click(object sender, EventArgs e)
 		{
 			Save();
 		}
 
-		private void toolStripButtonSaveAs_Click(object sender, EventArgs e)
+		private void ToolStripButtonSaveAs_Click(object sender, EventArgs e)
 		{
 			SaveAs();
 		}
 
-		private void toolStripButtonClose_Click(object sender, EventArgs e)
+		private void ToolStripButtonClose_Click(object sender, EventArgs e)
 		{
 			CloseAndSave();
 		}
 
-		private void toolStripButtonInspect_Click(object sender, EventArgs e)
+		private void ToolStripButtonInspect_Click(object sender, EventArgs e)
 		{
 			InspectEntities();
 		}
 
-		private void toolStripInspectGump_Click(object sender, EventArgs e)
+		private void ToolStripInspectGump_Click(object sender, EventArgs e)
 		{
 			InspectGumps();
 		}
 
-		private void toolStripRecord_Click(object sender, EventArgs e)
+		private void ToolStripRecord_Click(object sender, EventArgs e)
 		{
 			ScriptRecord();
 		}
 
-		private static void gumpinspector_close(object sender, EventArgs e)
+		private static void Gumpinspector_close(object sender, EventArgs e)
 		{
 			Assistant.Engine.MainWindow.GumpInspectorEnable = false;
 		}
 
-		private void toolStripButtonSearch_Click(object sender, EventArgs e)
+		private void ToolStripButtonSearch_Click(object sender, EventArgs e)
 		{
 			fastColoredTextBoxEditor.Focus();
 			SendKeys.SendWait("^f");
@@ -2030,7 +2064,7 @@ namespace RazorEnhanced.UI
 		{
 			OpenFileDialog open = new OpenFileDialog
 			{
-				Filter = "Script Files|*.py;*.txt;*.uos",
+				Filter = "Script Files|*.py;*.txt;*.uos;*.cs",
 				RestoreDirectory = true
 			};
 			if (open.ShowDialog() == DialogResult.OK)
@@ -2039,7 +2073,7 @@ namespace RazorEnhanced.UI
 				{
 					m_Filename = Path.GetFileName(open.FileName);
 					m_Filepath = open.FileName;
-					this.Text = m_Title;
+					this.Text = Title;
 					fastColoredTextBoxEditor.Text = File.ReadAllText(open.FileName);
 				}
 			}
@@ -2074,8 +2108,8 @@ namespace RazorEnhanced.UI
 			}
 		}
 
-		private void SavaData(string path, string text)
-		{
+		private void SavaData()
+        {
 			try // Avoid crash if for some reasons file are unaccessible.
 			{
 				File.WriteAllText(m_Filepath, fastColoredTextBoxEditor.Text);
@@ -2087,9 +2121,9 @@ namespace RazorEnhanced.UI
 		{
 			if (m_Filename != String.Empty)
 			{
-				this.Text = m_Title;
+				this.Text = Title;
 
-				SavaData(m_Filepath, fastColoredTextBoxEditor.Text);
+				SavaData();
 
 				ReloadAfterSave();
 			}
@@ -2103,17 +2137,17 @@ namespace RazorEnhanced.UI
 		{
 			SaveFileDialog save = new SaveFileDialog
 			{
-				Filter = "Python Files|*.py|Script Files|*.txt|UOSteam Files|*.uos",
+				Filter = "Python Files|*.py|Script Files|*.txt|UOSteam Files|*.uos|C# Files|*.cs",
 				RestoreDirectory = true
 			};
 			save.InitialDirectory = Path.Combine(Assistant.Engine.RootPath, "Scripts");
 			if (save.ShowDialog() == DialogResult.OK)
 			{
 				m_Filename = Path.GetFileName(save.FileName);
-				this.Text = m_Title;
+				this.Text = Title;
 				m_Filepath = save.FileName;
 				m_Filename = Path.GetFileName(save.FileName);
-				SavaData(save.FileName, fastColoredTextBoxEditor.Text);
+				SavaData();
 				ReloadAfterSave();
 			}
 		}
@@ -2125,7 +2159,7 @@ namespace RazorEnhanced.UI
 				fastColoredTextBoxEditor.Text = String.Empty;
 				m_Filename = String.Empty;
 				m_Filepath = String.Empty;
-				this.Text = m_Title;
+				this.Text = Title;
 				return true;
 			}
 
@@ -2137,14 +2171,14 @@ namespace RazorEnhanced.UI
 			{
 				if (m_Filename != null && m_Filename != String.Empty)
 				{
-					SavaData(m_Filepath, fastColoredTextBoxEditor.Text);
+					SavaData();
 					ReloadAfterSave();
 				}
 				else
 				{
 					SaveFileDialog save = new SaveFileDialog
 					{
-						Filter = "Script Files|*.py|Script Files|*.txt",
+						Filter = "Script Files|*.py|Script Files|*.txt|C# Files|*.cs",
 						FileName = m_Filename
 					};
 
@@ -2152,7 +2186,7 @@ namespace RazorEnhanced.UI
 					{
 						if (save.FileName != null && save.FileName != string.Empty && fastColoredTextBoxEditor.Text != null)
 						{
-							SavaData(save.FileName, fastColoredTextBoxEditor.Text);
+							SavaData();
 							m_Filename = save.FileName;
 							ReloadAfterSave();
 						}
@@ -2164,7 +2198,7 @@ namespace RazorEnhanced.UI
 				fastColoredTextBoxEditor.Text = String.Empty;
 				m_Filename = String.Empty;
 				m_Filepath = String.Empty;
-				this.Text = m_Title;
+				this.Text = Title;
 				return true;
 			}
 			else if (res == System.Windows.Forms.DialogResult.No)
@@ -2172,7 +2206,7 @@ namespace RazorEnhanced.UI
 				fastColoredTextBoxEditor.Text = String.Empty;
 				m_Filename = String.Empty;
 				m_Filepath = String.Empty;
-				this.Text = m_Title;
+				this.Text = Title;
 				return true;
 			}
 			else if (res == System.Windows.Forms.DialogResult.Cancel)
@@ -2224,7 +2258,7 @@ namespace RazorEnhanced.UI
 				}
 			}
 			EnhancedGumpInspector ginspector = new EnhancedGumpInspector();
-			ginspector.FormClosed += new FormClosedEventHandler(gumpinspector_close);
+			ginspector.FormClosed += new FormClosedEventHandler(Gumpinspector_close);
 			ginspector.TopMost = true;
 			ginspector.Show();
 		}
@@ -2354,22 +2388,22 @@ namespace RazorEnhanced.UI
 			SetStatusLabel("IDLE", Color.DarkTurquoise);
         }
 
-		private void copyToolStripMenuItem_Click(object sender, EventArgs e)
+		private void CopyToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			fastColoredTextBoxEditor.Copy();
 		}
 
-		private void pasteToolStripMenuItem_Click(object sender, EventArgs e)
+		private void PasteToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			fastColoredTextBoxEditor.Paste();
 		}
 
-		private void cutToolStripMenuItem_Click(object sender, EventArgs e)
+		private void CutToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			fastColoredTextBoxEditor.Cut();
 		}
 
-		private void commentSelectLineToolStripMenuItem_Click(object sender, EventArgs e)
+		private void CommentSelectLineToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			if (string.IsNullOrWhiteSpace(fastColoredTextBoxEditor.SelectedText)) // No selection
 				return;
@@ -2385,7 +2419,7 @@ namespace RazorEnhanced.UI
 			}
 		}
 
-		private void unCommentLineToolStripMenuItem_Click(object sender, EventArgs e)
+		private void UnCommentLineToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			if (string.IsNullOrWhiteSpace(fastColoredTextBoxEditor.SelectedText)) // No selection
 				return;
@@ -2401,7 +2435,7 @@ namespace RazorEnhanced.UI
 			}
 		}
 
-		private void messagelistBox_KeyUp(object sender, KeyEventArgs e)
+		private void MessagelistBox_KeyUp(object sender, KeyEventArgs e)
 		{
 			if (messagelistBox.SelectedItems == null) // Nothing selected
 				return;
@@ -2412,12 +2446,12 @@ namespace RazorEnhanced.UI
 			}
 		}
 
-		private void clearToolStripMenuItem_Click(object sender, EventArgs e)
+		private void ClearToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			messagelistBox.Items.Clear();
 		}
 
-		private void copyToolStripMenuItem1_Click(object sender, EventArgs e)
+		private void CopyToolStripMenuItem1_Click(object sender, EventArgs e)
 		{
 			if (messagelistBox.SelectedItems == null) // Nothing selected
 				return;
@@ -2425,7 +2459,7 @@ namespace RazorEnhanced.UI
 			Utility.ClipBoardCopy(String.Join(Environment.NewLine, messagelistBox.SelectedItems.Cast<string>()));
 		}
 
-		private void toolStripInspectAlias_Click(object sender, EventArgs e)
+		private void ToolStripInspectAlias_Click(object sender, EventArgs e)
 		{
 			foreach (Form f in Application.OpenForms)
 			{
@@ -2457,26 +2491,33 @@ namespace RazorEnhanced.UI
 
         }
 
-		public string ToolTipDescription()
-		{
-			string complete_description = String.Empty;
+        public string ToolTipDescription()
+        {
+            string complete_description = "";
 
-			complete_description += "Parameters: ";
-
-			foreach (string parameter in Parameters)
-				complete_description += "\n\t" + parameter;
-
-			complete_description += "\nReturns: " + Returns;
-
-			complete_description += "\nDescription:";
-
-            if (Description.Length > 0)
+            //Description
+            if (Description.Trim().Length > 0)
             {
-                complete_description += "\n" + Description.Trim();
+                complete_description += Description.Trim() + "\n";
             }
 
+            //Parameters
+            complete_description += "\nParameters: ";
+            if (Parameters.Length > 0)
+            {
+                complete_description += "\n" + String.Join("\n", Parameters.Select(text=>"- "+text));
+            }
+            else {
+                complete_description += "None";
+            }
+            complete_description += "\n";
+
+            //Return
+            complete_description += $"\nReturns: {Returns}";
+
+            //Notes
             if (Notes.Length > 0){
-                complete_description += "\n---" + Notes;
+                complete_description += "\n---\n" + Notes;
             }
             return complete_description;
 		}
@@ -2489,8 +2530,8 @@ namespace RazorEnhanced.UI
 	/// </summary>
 	public class MethodAutocompleteItemAdvance : MethodAutocompleteItem
 	{
-		string firstPart;
-		string lastPart;
+        readonly string firstPart;
+        readonly string lastPart;
 
 		public MethodAutocompleteItemAdvance(string text)
 			: base(text)
@@ -2558,8 +2599,8 @@ namespace RazorEnhanced.UI
 	/// </summary>
 	public class SubPropertiesAutocompleteItem : MethodAutocompleteItem
 	{
-		string firstPart;
-		string lastPart;
+        readonly string firstPart;
+        readonly string lastPart;
 
 		public SubPropertiesAutocompleteItem(string text)
 			: base(text)

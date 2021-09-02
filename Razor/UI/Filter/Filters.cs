@@ -20,11 +20,13 @@ namespace Assistant
 		internal RazorCheckBox FilterSpam { get { return spamFilter; } }
 		internal RazorCheckBox ForceSpeechHue { get { return chkForceSpeechHue; } }
 		internal DataGridView GraphFilterDataGrid { get { return graphfilterdatagrid; } }
-		internal RazorCheckBox ShowMobNames { get { return incomingMob; } }
+    internal DataGridView JournalFilterDataGrid { get { return journalfilterdatagrid; } }
+    internal DataGridView JournalList { get { return journalList; } }
+    internal CheckedListBox JournalTextSelection { get { return journalTextSelection; } }
+    internal TextBox JournalFilterString { get { return journalFilterString; } }
+    internal RazorCheckBox ShowMobNames { get { return incomingMob; } }
 		internal RazorCheckBox LastTargTextFlags { get { return showtargtext; } }
 		internal RazorCheckBox SmartLastTarget { get { return smartLT; } }
-		
-		internal RazorCheckBox NoSelfLastTarget { get { return noSelfLT; } }
 
 		// Colori override
 		internal int SysColor = 0;
@@ -227,6 +229,13 @@ namespace Assistant
 				RazorEnhanced.Settings.General.WriteBool("CountStealthSteps", chkStealth.Checked);
 		}
 
+        private void druidClericPackets_CheckedChanged(object sender, System.EventArgs e)
+        {
+            if (druidClericPackets.Focused)
+                RazorEnhanced.Settings.General.WriteBool("DruidClericPackets", druidClericPackets.Checked);
+        }
+
+
         private void setpathmapbutton_Click(object sender, EventArgs e)
 		{
 			openmaplocation.RestoreDirectory = true;
@@ -256,7 +265,7 @@ namespace Assistant
 				RazorEnhanced.Settings.General.WriteInt("CorpseRange", Utility.ToInt32(corpseRange.Text, 2));
 		}
 
-		private static char[] m_InvalidNameChars = new char[] { '/', '\\', ';', '?', ':', '*' };
+		private static readonly char[] m_InvalidNameChars = new char[] { '/', '\\', ';', '?', ':', '*' };
 
 		private void spamFilter_CheckedChanged(object sender, System.EventArgs e)
 		{
@@ -316,12 +325,6 @@ namespace Assistant
 			if (smartLT.Focused)
 				RazorEnhanced.Settings.General.WriteBool("SmartLastTarget", smartLT.Checked);
 		}
-		
-		private void noSelfLT_CheckedChanged(object sender, System.EventArgs e)
-		{
-			if (smartLT.Focused)
-				RazorEnhanced.Settings.General.WriteBool("NoSelfLastTarget`", noSelfLT.Checked);
-		}
 
 		private void showtargtext_CheckedChanged(object sender, System.EventArgs e)
 		{
@@ -363,7 +366,7 @@ namespace Assistant
 				RazorEnhanced.Settings.General.WriteInt("MessageLevel", msglvl.SelectedIndex);
 		}
 
-		private Timer m_ResizeTimer = Timer.DelayedCallback(TimeSpan.FromSeconds(1.0), new TimerCallback(ForceSize));
+		private readonly Timer m_ResizeTimer = Timer.DelayedCallback(TimeSpan.FromSeconds(1.0), new TimerCallback(ForceSize));
 
 		private static void ForceSize()
 		{
@@ -444,6 +447,11 @@ namespace Assistant
 				RazorEnhanced.Settings.General.WriteBool("PotionEquip", potionEquip.Checked);
 		}
 
+		private void uo3dEquipUnEquip_CheckedChanged(object sender, EventArgs e)
+		{
+			if (uo3dEquipUnEquip.Focused)
+				RazorEnhanced.Settings.General.WriteBool("UO3DEquipUnEquip", uo3dEquipUnEquip.Checked);
+		}
 
 		private void chknorunStealth_CheckedChanged(object sender, EventArgs e)
 		{
@@ -470,11 +478,48 @@ namespace Assistant
 			healthFmt.Enabled = showHealthOH.Checked;
 		}
 
-		private void healthFmt_TextChanged(object sender, System.EventArgs e)
-		{
-			if (healthFmt.Focused)
-				RazorEnhanced.Settings.General.WriteString("HealthFmt", healthFmt.Text);
-		}
+        private void healthFmt_TextChanged(object sender, System.EventArgs e)
+        {
+            if (healthFmt.Focused)
+                RazorEnhanced.Settings.General.WriteString("HealthFmt", healthFmt.Text);
+        }
+
+        private void journalFilter_TextChanged(object sender, System.EventArgs e)
+        {
+            RazorEnhanced.Settings.General.WriteString("JournalFilterText", journalFilterString.Text);
+
+            System.Data.DataView dv = (System.Data.DataView)JournalList.DataSource;
+            try
+            {
+                string[] allWords = JournalFilterString.Text.ToLower().Split(' ');
+                if (allWords.Length > 0)
+                {
+                    string assembleFilter = "";
+                    int lastCount = allWords.Length;
+                    foreach (string word in allWords)
+                    {
+                        lastCount -= 1;
+                        string trimmedWord = word.Trim();
+                        if (trimmedWord.Length > 0)
+                        {
+                            assembleFilter += String.Format("text like '*{0}*'", trimmedWord);
+                            if (lastCount > 0)
+                                assembleFilter += " or ";
+                        }
+                    }
+                    dv.RowFilter = assembleFilter;
+
+                }
+                else
+                {
+                    dv.RowFilter = "";
+                }
+            }
+            catch (Exception)
+            {
+                dv.RowFilter = "";
+            }
+        }
 
 		private void chkPartyOverhead_CheckedChanged(object sender, System.EventArgs e)
 		{
@@ -509,7 +554,7 @@ namespace Assistant
 
 			try
 			{
-		 		Assistant.Client.Instance.ClientProcess.PriorityClass = (System.Diagnostics.ProcessPriorityClass)Enum.Parse(typeof(System.Diagnostics.ProcessPriorityClass), str, true);
+		 		//Assistant.Client.Instance.ClientProcess.PriorityClass = (System.Diagnostics.ProcessPriorityClass)Enum.Parse(typeof(System.Diagnostics.ProcessPriorityClass), str, true);
 			}
 			catch
 			{
@@ -584,5 +629,11 @@ namespace Assistant
 			((Filters.Filter)filters.Items[e.Index]).OnCheckChanged(e.NewValue);
 		}
 
-	}
+        private void OnJournalFilterCheck(object sender, System.Windows.Forms.ItemCheckEventArgs e)
+        {
+            string changed = (string)JournalTextSelection.Items[e.Index];
+            RazorEnhanced.Settings.General.WriteBool("Journal" + changed, e.NewValue == CheckState.Checked);
+        }
+
+    }
 }

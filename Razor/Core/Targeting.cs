@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using RazorEnhanced;
 
 namespace Assistant
 {
@@ -50,16 +49,16 @@ namespace Assistant
 
 		private delegate bool QueueTarget();
 
-		private static QueueTarget TargetSelfAction = new QueueTarget(DoTargetSelf);
-        private static QueueTarget LastTargetAction = new QueueTarget(DoLastTarget);
-        private static QueueTarget AutoTargetAction = new QueueTarget(DoAutoTarget);
+		private static readonly QueueTarget TargetSelfAction = new QueueTarget(DoTargetSelf);
+        private static readonly QueueTarget LastTargetAction = new QueueTarget(DoLastTarget);
+        private static readonly QueueTarget AutoTargetAction = new QueueTarget(DoAutoTarget);
 
         private static QueueTarget m_QueueTarget;
 
 		private static uint m_SpellTargID = 0;
 		internal static uint SpellTargetID { get { return m_SpellTargID; } set { m_SpellTargID = value; } }
 
-		private static List<uint> m_FilterCancel = new List<uint>();
+		private static readonly List<uint> m_FilterCancel = new List<uint>();
 
 		internal static bool HasTarget { get { return m_HasTarget; } }
 
@@ -206,7 +205,7 @@ namespace Assistant
 
 		internal static void SetLastTarget(Serial s, byte flagType, bool wait)
 		{
-			if (m_LastTarget != null && s == Serial.Zero && m_LastTarget.Serial == s) // Non settare last se gi√† il serial corrente
+			if (m_LastTarget != null && s == Serial.Zero && m_LastTarget.Serial == s) // Non settare last se gi‡ il serial corrente
 				return;
 
 			TargetInfo targ = new TargetInfo();
@@ -379,7 +378,7 @@ namespace Assistant
             if (targ == null)
                 return false;
 
-            Point3D pos = Point3D.Zero;
+            Point3D pos;
             if (targ.Serial.IsMobile)
             {
                 Mobile m = World.FindMobile(targ.Serial);
@@ -457,8 +456,8 @@ namespace Assistant
 			if (targ == null)
 				return false;
 
-			Point3D pos = Point3D.Zero;
-			if (targ.Serial.IsMobile)
+            Point3D pos;
+            if (targ.Serial.IsMobile)
 			{
 				Mobile m = World.FindMobile(targ.Serial);
 				if (m != null)
@@ -537,7 +536,7 @@ namespace Assistant
 			m_LastTarget = m_LastGroundTarg = null;
 		}
 
-		private static TimerCallbackState m_OneTimeRespCallback = new TimerCallbackState(OneTimeResponse);
+		private static readonly TimerCallbackState m_OneTimeRespCallback = new TimerCallbackState(OneTimeResponse);
 
 		private static void OneTimeResponse(object state)
 		{
@@ -582,9 +581,7 @@ namespace Assistant
 			else if (m_HasTarget)
 			{
 				info.TargID = m_CurrentID;
-				bool noSelf = Engine.MainWindow.NoSelfLastTarget.Checked;
-				if (!noSelf || info.Serial != Player.Serial)
-					m_LastGroundTarg = m_LastTarget = info;
+				m_LastGroundTarg = m_LastTarget = info;
 				if (wait)
 			 		Assistant.Client.Instance.SendToServerWait(new TargetResponse(info));
 				else

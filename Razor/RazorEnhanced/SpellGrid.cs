@@ -5,6 +5,7 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Windows.Forms;
 using Assistant;
+using Assistant.UI;
 using System.Reflection;
 
 namespace RazorEnhanced
@@ -88,19 +89,21 @@ namespace RazorEnhanced
 
 	internal class SpellGrid
 	{
+        static bool m_open = false;
+        static bool m_save_state;
 		[Serializable]
 		public class SpellGridItem
 		{
-			private string m_Group;
+			private readonly string m_Group;
 			public string Group { get { return m_Group; } }
 
-			private string m_Spell;
+			private readonly string m_Spell;
 			public string Spell { get { return m_Spell; } }
 
-			private Color m_Color;
+			private readonly Color m_Color;
 			public Color Color { get { return m_Color; } }
 
-			private Color m_Border;
+			private readonly Color m_Border;
 			internal Color Border { get { return m_Border; } }
 
 			public SpellGridItem(string group, string spell, Color color, Color border)
@@ -174,14 +177,26 @@ namespace RazorEnhanced
 
 		internal static void Close()
 		{
-			if (m_form == null)
-				return;
+			int displayMethod = RazorEnhanced.Settings.General.ReadInt("SpellGridStyle");
 
-			Engine.GridX = m_form.Location.X;
-			Engine.GridY = m_form.Location.Y;
-			m_form.Close();
-			m_form = null;
-			m_hslot = m_vslot = 0;
+			if (displayMethod == 0)
+			{
+
+				if (m_form == null)
+					return;
+
+				Engine.GridX = m_form.Location.X;
+				Engine.GridY = m_form.Location.Y;
+				m_form.Close();
+				m_form = null;
+				m_hslot = m_vslot = 0;
+			}
+			else 
+			{
+				uint gumpId = (uint)999009999;
+				Gumps.CloseGump(gumpId);
+			}
+            m_open = false;
 		}
 
 		internal static void Open()
@@ -191,14 +206,25 @@ namespace RazorEnhanced
 
 			m_vslot = RazorEnhanced.Settings.General.ReadInt("GridVSlot");
 			m_hslot = RazorEnhanced.Settings.General.ReadInt("GridHSlot");
-			if (m_form == null)
-				DrawSpellGrid();
 
-			UpdatePanelImage();
-			DLLImport.Win.ShowWindow(m_form.Handle, 8);
-			m_form.Location = new System.Drawing.Point(Settings.General.ReadInt("PosXGrid"), Settings.General.ReadInt("PosYGrid"));
-			m_form.Opacity =((double)RazorEnhanced.Settings.General.ReadInt("GridOpacity")) / 100.0;
-			m_form.Refresh();
+			int displayMethod = RazorEnhanced.Settings.General.ReadInt("SpellGridStyle");
+			if (displayMethod == 0)
+			{
+				if (m_form == null)
+					DrawSpellGrid();
+
+				UpdatePanelImage();
+				Engine.MainWindow.SafeAction(s => { s.GridLocationLabel.Text = "X: " + Engine.GridX + " - Y:" + Engine.GridY; });
+				DLLImport.Win.ShowWindow(m_form.Handle, 8);
+				m_form.Location = new System.Drawing.Point(Settings.General.ReadInt("PosXGrid"), Settings.General.ReadInt("PosYGrid"));
+				m_form.Opacity = ((double)RazorEnhanced.Settings.General.ReadInt("GridOpacity")) / 100.0;
+				m_form.Refresh();
+			}
+			else 
+			{
+				GumpSpellGrid();
+			}
+            m_open = true;
         }
 
 		internal static void LockUnlock()
@@ -260,61 +286,85 @@ namespace RazorEnhanced
 		}
 		internal static void UpdateSkillHighLight(SkillIcon ID, bool enable)
 		{
-			foreach (PanelGrid p in m_panellist)
-			{
-				if (p.Group == GroupType.Mastery || p.Group == GroupType.Bushido || p.Group == GroupType.Ninjitsu)
-				{
-					if (Enum.TryParse<SkillIcon>(p.Spell.Replace(" ", ""), out SkillIcon l))
-					{
-						if (ID == l)
-						{
-							if (enable)
-								p.BackgroundImage = ColorizeIcon((Bitmap)p.BackgroundImage);
-							else
-								p.BackgroundImage = Ultima.Gumps.GetGump(GetImageID(p.Group, p.Spell));
-						}
-					}
-				}
-			}
+            int displayMethod = RazorEnhanced.Settings.General.ReadInt("SpellGridStyle");
+            if (displayMethod == 0)
+            {
+
+                foreach (PanelGrid p in m_panellist)
+                {
+                    if (p.Group == GroupType.Mastery || p.Group == GroupType.Bushido || p.Group == GroupType.Ninjitsu)
+                    {
+                        if (Enum.TryParse<SkillIcon>(p.Spell.Replace(" ", ""), out SkillIcon l))
+                        {
+                            if (ID == l)
+                            {
+                                if (enable)
+                                    p.BackgroundImage = ColorizeIcon((Bitmap)p.BackgroundImage);
+                                else
+                                    p.BackgroundImage = Ultima.Gumps.GetGump(GetImageID(p.Group, p.Spell));
+                            }
+                        }
+                    }
+                }
+            }
+            else 
+            {
+                Close();
+                Open();
+            }
 		}
 
-		internal static void UpdateSAHighLight(int ID)
-		{
-			foreach (PanelGrid p in m_panellist)
-			{
-				if (p.Group == GroupType.Abilities)
-				{
-					if (ID == 0)
-					{
-						p.AbilityEnabled = false;
-						if (p.Spell == "Primary")
-							p.BackgroundImage = Ultima.Gumps.GetGump(SpecialMoves.GetPrimaryIcon(p.AbilityID));
-						else
-							p.BackgroundImage = Ultima.Gumps.GetGump(SpecialMoves.GetSecondaryIcon(p.AbilityID));
-					}
-					else
-					{
-						if (p.AbilityID == ID)
-						{
-							p.AbilityEnabled = true;
-							p.BackgroundImage = ColorizeIcon((Bitmap)p.BackgroundImage);
-						}
-						else
-						{
-							if (p.AbilityEnabled)
-							{
-								if (p.Spell == "Primary")
-									p.BackgroundImage = Ultima.Gumps.GetGump(SpecialMoves.GetPrimaryIcon(p.AbilityID));
-								else
-									p.BackgroundImage = Ultima.Gumps.GetGump(SpecialMoves.GetSecondaryIcon(p.AbilityID));
-							}
-						}
+        internal static void UpdateSAHighLight(int ID)
+        {
+            if (m_open)
+            {
+                int displayMethod = RazorEnhanced.Settings.General.ReadInt("SpellGridStyle");
 
-					}
+                if (displayMethod == 0)
+                {
 
-				}
-			}
-		}
+                    foreach (PanelGrid p in m_panellist)
+                    {
+                        if (p.Group == GroupType.Abilities)
+                        {
+                            if (ID == 0)
+                            {
+                                p.AbilityEnabled = false;
+                                if (p.Spell == "Primary")
+                                    p.BackgroundImage = Ultima.Gumps.GetGump(SpecialMoves.GetPrimaryIcon(p.AbilityID));
+                                else
+                                    p.BackgroundImage = Ultima.Gumps.GetGump(SpecialMoves.GetSecondaryIcon(p.AbilityID));
+                            }
+                            else
+                            {
+                                if (p.AbilityID == ID)
+                                {
+                                    p.AbilityEnabled = true;
+                                    p.BackgroundImage = ColorizeIcon((Bitmap)p.BackgroundImage);
+                                }
+                                else
+                                {
+                                    if (p.AbilityEnabled)
+                                    {
+                                        if (p.Spell == "Primary")
+                                            p.BackgroundImage = Ultima.Gumps.GetGump(SpecialMoves.GetPrimaryIcon(p.AbilityID));
+                                        else
+                                            p.BackgroundImage = Ultima.Gumps.GetGump(SpecialMoves.GetSecondaryIcon(p.AbilityID));
+                                    }
+                                }
+
+                            }
+
+                        }
+                    }
+                }
+                else
+                {
+                    Close();
+                    Open();
+                }
+            }
+        }
 
 		internal static void UpdateSAIcon()
 		{
@@ -455,6 +505,7 @@ namespace RazorEnhanced
 			DLLImport.Win.SetForegroundWindow(Assistant.Client.Instance.GetWindowHandle());
 		}
 
+
 		internal static void InitEvent()
 		{
 			foreach (Control control in m_form.Controls)
@@ -468,9 +519,193 @@ namespace RazorEnhanced
 		}
 
 		////////////////////////////////////////////////////
-		/////////////// DRAW SPELLGRID START ///////////////
-		////////////////////////////////////////////////////
 
+		static internal uint m_spellGridGID = 9909999;
+		
+		internal static void GetSpellGridOrigin()
+		{
+			if (World.Player == null)
+				return;
+            m_save_state = m_open;
+            if (m_open)
+                Close();
+			Gumps.GumpData gd = Gumps.CreateGump(false, true, true, false);
+			gd.gumpId = m_spellGridGID;
+			gd.serial = (uint)Player.Serial;
+
+			Gumps.AddPage(ref gd, 0);
+
+
+			Gumps.AddImageTiled(ref gd, 0, 0, 3000, 3000, 2624);
+			Gumps.AddAlphaRegion(ref gd, 0, 0, 3000, 3000);
+			Gumps.AddHtml(ref gd, 320, 215, 350, 85, @"Select a button where you would like the hotbar to open. This position will also be used if you enable auto-open on login.<br>If you have maually moved the hotbar since logging in you may have to logout and  login again for this to work", (bool)true, (bool)true);
+
+			Gumps.AddButton(ref gd, 700, 230, 241, 242, 0, 1, 0); // cancel
+			Gumps.AddButton(ref gd, 700, 260, 247, 248, 0, 1, 0); // options
+
+			int buttonID = 1;
+			int squareSize = 50;
+			for (int y = 0; y <= 1100; y += squareSize)
+			{
+				for (int x = 0; x <= 2000; x += squareSize)
+				{
+					Gumps.AddButton(ref gd, x, y, 1210, 1209, buttonID++, 1, 0);
+				}
+			}
+			gd.action = SetSpellGridOrigin;
+			Gumps.SendGump(gd, 0, 0);
+
+		}
+
+		internal static void SetSpellGridOrigin(Gumps.GumpData gd)
+		{
+			int buttonID = gd.buttonid;
+			if (buttonID > 0)
+			{
+                int x = ((buttonID % 41) - 1) * 50;
+                int y = (buttonID / 41) * 50;
+                if ((x != Engine.GridX) || (y != Engine.GridY))
+                {
+                    Engine.GridX = x;
+                    Settings.General.WriteInt("PosXGrid", Engine.GridX);
+                    Engine.GridY = y;
+                    Settings.General.WriteInt("PosYGrid", Engine.GridY);
+                    Engine.MainWindow.SafeAction(s => { s.GridLocationLabel.Text = "X: " + Engine.GridX + " - Y:" + Engine.GridY; });
+                }
+			}
+            if (m_save_state)
+                Open();
+		}
+
+		internal static void GumpSpellGrid()
+		{
+			List<SpellGridItem> items = Settings.SpellGrid.ReadItems();
+            int ActiveColor = 32;
+            int InactiveColor = 0;
+            int offset = 3;
+            
+            Gumps.GumpData spellBar = Gumps.CreateGump(false, false, false, false);
+			spellBar.gumpId = (uint)999009999;
+			spellBar.serial = (uint)Player.Serial;
+			Gumps.AddPage(ref spellBar, 0);
+			//Gumps.AddAlphaRegion(ref spellBar, Engine.GridX, Engine.GridY, 300, 300);
+			int y = 0;
+			int x = 0;
+			int index = 0;
+			foreach (SpellGridItem item in items)
+			{
+				int imageid = 0;
+
+                GroupType g;
+				if (Enum.TryParse<GroupType>(item.Group, out g))
+				{
+					if (g != GroupType.Empty)
+					{
+                        imageid = GetImageID(g, item.Spell);
+						switch (imageid)
+						{
+							case 0:
+								m_panellist[x].Enabled = false;
+								break;
+
+							case -1:  // Script
+								Gumps.AddButton(ref spellBar, Engine.GridX + (x * 50), Engine.GridY + (y * 50), 4502, 2205, index, 1, 0);
+								break;
+
+							case -2:  // Skill
+								Gumps.AddButton(ref spellBar, Engine.GridX + (x * 50), Engine.GridY + (y * 50), 2105, 2205, index, 1, 0);
+								break;
+
+							default:
+                                if (Gumps.IsValid(2353))
+                                {
+                                    if (item.Spell == "Primary")
+                                    {
+                                        if (Player.HasPrimarySpecial)
+                                            Gumps.AddImage(ref spellBar, Engine.GridX + (x * 50) + offset, Engine.GridY + (y * 50) + offset, (int)Player.PrimarySpecial, ActiveColor);
+                                        else
+                                            Gumps.AddImage(ref spellBar, Engine.GridX + (x * 50) + offset, Engine.GridY + (y * 50) + offset, (int)Player.PrimarySpecial, InactiveColor);
+                                    }
+                                    else if (item.Spell == "Secondary")
+                                    {
+                                        if (Player.HasSecondarySpecial)
+                                            Gumps.AddImage(ref spellBar, Engine.GridX + (x * 50) + offset, Engine.GridY + (y * 50) + offset, (int)Player.SecondarySpecial, ActiveColor);
+                                        else
+                                            Gumps.AddImage(ref spellBar, Engine.GridX + (x * 50) + offset, Engine.GridY + (y * 50) + offset, (int)Player.SecondarySpecial, InactiveColor);
+                                    }
+                                    else if (Enum.TryParse<SkillIcon>(item.Spell.Replace(" ", ""), out SkillIcon icon))
+                                    {
+                                        if (World.Player.SkillEnabled.Contains(icon))
+                                            Gumps.AddImage(ref spellBar, Engine.GridX + (x * 50) + offset, Engine.GridY + (y * 50) + offset, (int)imageid, ActiveColor);
+                                        else
+                                            Gumps.AddImage(ref spellBar, Engine.GridX + (x * 50) + offset, Engine.GridY + (y * 50) + offset, (int)imageid, InactiveColor);
+                                    }
+                                    else 
+                                    {
+                                        Gumps.AddImage(ref spellBar, Engine.GridX + (x * 50) + offset, Engine.GridY + (y * 50) + offset, (int)imageid, 0);
+                                    }
+                                    Gumps.AddButton(ref spellBar, Engine.GridX + (x * 50), Engine.GridY + (y * 50), 2353, 2205, index, 1, 0);
+                                }
+                                else
+                                {
+                                    Gumps.AddButton(ref spellBar, Engine.GridX + (x * 50), Engine.GridY + (y * 50), imageid, 2205, index, 1, 0);
+                                }
+								break;
+						}
+						Gumps.AddTooltip(ref spellBar, item.Spell);
+
+
+					}
+				}
+
+				x += 1;
+				if (x >= m_hslot)
+				{
+					x = 0;
+					y += 1;
+					if (y >= m_vslot)
+						break;
+				}
+				index++;
+			}
+			spellBar.action = SpellBarAction;
+			Gumps.SendGump(spellBar, (uint)Engine.GridX, (uint)Engine.GridY);
+		}
+
+		internal static void SpellBarAction(Gumps.GumpData gd)
+		{
+			int buttonID = gd.buttonid;
+			List<SpellGridItem> items = Settings.SpellGrid.ReadItems();
+
+			SpellGridItem item = items[buttonID];
+
+			if (item.Group == "Abilities")
+			{ 
+				if (item.Spell == "Primary")
+					Player.WeaponPrimarySA();
+				if (item.Spell == "Secondary")
+					Player.WeaponSecondarySA();
+			}
+			else if (item.Group == "Script")
+			{
+				Misc.ScriptRun(item.Spell);
+			}
+			else if (item.Group == "Skills")
+			{
+				Player.UseSkill(item.Spell);
+			}
+			else
+			{
+				Spells.Cast(item.Spell);
+			}
+			GumpSpellGrid();
+
+		}
+
+
+		/// <summary>
+		/// ///////////////////////////////////////////
+		/// </summary>
 		private static List<PanelGrid> m_panellist = new List<PanelGrid>();
 
 		internal static void DrawSpellGrid()
@@ -511,15 +746,17 @@ namespace RazorEnhanced
 
 		private static int GetImageID(GroupType t, string s)
 		{
-			int imageid = 0;
-
-			switch (t)
+            int imageid;
+            switch (t)
 			{
 				case GroupType.Magery:
 					SpellIconMagery.TryGetValue(s, out imageid);
 					break;
 				case GroupType.Abilities:
-					SpellIconAbilities.TryGetValue(s, out imageid);
+                    if (s == "Primary")
+                        imageid = (int)SpecialMoves.PrimaryGumpId;
+                    else
+                        imageid = (int)SpecialMoves.SecondaryGumpId;
 					break;
 				case GroupType.Mastery:
 					SpellIconMastery.TryGetValue(s, out imageid);
@@ -570,9 +807,8 @@ namespace RazorEnhanced
 
 				int imageid = 0;
 
-				GroupType g = GroupType.Empty;
-
-				if (Enum.TryParse<GroupType>(items[x].Group, out g))
+                GroupType g;
+                if (Enum.TryParse<GroupType>(items[x].Group, out g))
 					imageid = GetImageID(g, items[x].Spell);
 
 				m_panellist[x].BorderColor = items[x].Color;
@@ -584,6 +820,7 @@ namespace RazorEnhanced
 						break;
 
 					case -1:  // Script
+						//2643
 						if (items[x].Spell != string.Empty)
 						{
 							m_panellist[x].BackgroundImage = CreateBitmap(items[x].Spell.Substring(0, items[x].Spell.LastIndexOf(".")));
@@ -592,6 +829,7 @@ namespace RazorEnhanced
 						break;
 
 					case -2:  // Skill
+						//2104
 						m_panellist[x].BackgroundImage = SkillsIcon[items[x].Spell];
 						m_panellist[x].Enabled = true;
 						break;
@@ -678,6 +916,7 @@ namespace RazorEnhanced
 		{
 			Engine.MainWindow.GridSlotComboBox.Items.Clear();
 			Engine.MainWindow.GridLockCheckBox.Checked = m_lock = Settings.General.ReadBool("LockGridCheckBox");
+			Engine.MainWindow.SpellGridStyleComboBox.SelectedIndex = Settings.General.ReadInt("SpellGridStyle");
 			Engine.MainWindow.GridOpenLoginCheckBox.Checked = Settings.General.ReadBool("GridOpenLoginCheckBox");
 			Engine.MainWindow.GridLocationLabel.Text = "X: " + Settings.General.ReadInt("PosXGrid") + " - Y:" + RazorEnhanced.Settings.General.ReadInt("PosYGrid");
 			Engine.GridX = Settings.General.ReadInt("PosXGrid");
@@ -868,7 +1107,7 @@ namespace RazorEnhanced
 			{ "Animate Dead", 0x5000},
 			{ "Blood Oath", 0x5001},
 			{ "Corpse Skin", 0x5002},
-			{ "Curse Weapon", 0x503},
+			{ "Curse Weapon", 0x5003},
 			{ "Evil Omen", 0x5004},
 			{ "Horrific Beast", 0x5005},
 			{ "Lich Form", 0x5006},

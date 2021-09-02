@@ -10,11 +10,20 @@ using System.Windows.Forms;
 
 namespace RazorEnhanced
 {
+    /// <summary>
+    /// @nodoc
+    /// @experimental
+    /// The Vendor class allow you to read the list items purchased last.
+    /// </summary>
     public class Vendor
     {
+        /// <summary>@nodoc</summary>
         static public List<Assistant.Item> LastBuyList { get; set; }
+
+        /// <summary>@nodoc</summary>
         static public Assistant.Mobile LastVendor { get; set; }
 
+        /// <summary>@nodoc</summary>
         static public void StoreBuyList(PacketReader p, PacketHandlerEventArgs args)
         {
             Assistant.Serial serial = p.ReadUInt32();
@@ -30,6 +39,11 @@ namespace RazorEnhanced
             Vendor.LastVendor = vendor;
             Vendor.LastBuyList = pack.Contains;
         }
+
+        /// <summary>
+        /// @nodoc
+        /// This method needs to be restructured/redesigned before being documented.
+        /// </summary>
         public static void Buy(int vendorSerial, int itemID, int amount)
         {
             if (LastVendor == null)
@@ -49,7 +63,7 @@ namespace RazorEnhanced
                         Assistant.Client.Instance.SendToServer(new VendorBuyResponse(vendorSerial, buyList));
                         int price = listItem.Price * buyAmount;
                         string message = "Buy Function: bought " + buyAmount.ToString() + " items for " + price.ToString() + " gold coins";
-                        World.Player.Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(message, "System", 1, "Vendor", vendorSerial));          // Journal buffer
+                        Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(message, "System", 1, "Vendor", vendorSerial));          // Journal buffer
                         World.Player.SendMessage(message);
                         return;
                     }
@@ -57,6 +71,9 @@ namespace RazorEnhanced
             }
         }
 
+        /// <summary>
+        /// The BuyItem class store informations about a recently purchased item.
+        /// </summary>
         public class BuyItem
         {
             public string Name { get; set; }
@@ -66,10 +83,16 @@ namespace RazorEnhanced
             public int Price { get; set; }
 
         }
-        public static List<BuyItem> BuyList(int vendorSerial)
+
+        /// <summary>
+        /// Get the list of items purchased in the last trade, with a specific Vendor.
+        /// </summary>
+        /// <param name="vendorSerial">Serial of the Vendor (default: -1 - most recent trade)</param>
+        /// <returns>A list of BuyItem</returns>
+        public static List<BuyItem> BuyList(int vendorSerial=-1)
         {
             List<BuyItem> buyList = new List<BuyItem>();
-            if (LastVendor.Serial == vendorSerial)
+            if (vendorSerial == -1 || LastVendor.Serial == vendorSerial)
                 foreach (Assistant.Item listItem in LastBuyList)
                 {
                     BuyItem item = new BuyItem();
@@ -86,6 +109,10 @@ namespace RazorEnhanced
 
     }
 
+
+    /// <summary>
+    /// The SellAgent class allow you to interect with the SellAgent, via scripting.
+    /// </summary>
     public class SellAgent
 	{
 		private static string m_listname;
@@ -94,16 +121,16 @@ namespace RazorEnhanced
 		[Serializable]
 		public class SellAgentItem : ListAbleItem
 		{
-			private string m_Name;
+			private readonly string m_Name;
 			public string Name { get { return m_Name; } }
 
-			private int m_Graphics;
+			private readonly int m_Graphics;
 			public int Graphics { get { return m_Graphics; } }
 
-			private int m_amount;
+			private readonly int m_amount;
 			public int Amount { get { return m_amount; } }
 
-			private int m_color;
+			private readonly int m_color;
 			public int Color { get { return m_color; } }
 
 
@@ -122,10 +149,10 @@ namespace RazorEnhanced
 
 		internal class SellAgentList
 		{
-			private string m_Description;
+			private readonly string m_Description;
 			internal string Description { get { return m_Description; } }
 
-			private int m_Bag;
+			private readonly int m_Bag;
 			internal int Bag { get { return m_Bag; } }
 
 			[JsonProperty("Selected")]
@@ -198,8 +225,8 @@ namespace RazorEnhanced
 				if (row.IsNewRow)
 					continue;
 
-				int color = 0;
-				if ((string)row.Cells[4].Value == "All")
+                int color;
+                if ((string)row.Cells[4].Value == "All")
 					color = -1;
 				else
 					color = Convert.ToInt32((string)row.Cells[4].Value, 16);
@@ -216,28 +243,31 @@ namespace RazorEnhanced
 		{
 			List<SellAgentList> lists = Settings.SellAgent.ListsRead();
 
-			Engine.MainWindow.VendorSellGridView.Rows.Clear();
-
 			foreach (SellAgentList l in lists)
 			{
 				if (l.Selected)
 				{
-					List<SellAgent.SellAgentItem> items = Settings.SellAgent.ItemsRead(l.Description);
-
-                    foreach (SellAgentItem item in items)
-					{
-						string color = "All";
-						if (item.Color != -1)
-							color = "0x" + item.Color.ToString("X4");
-
-						Engine.MainWindow.VendorSellGridView.Rows.Add(new object[] { item.Selected.ToString(), item.Name, "0x"+item.Graphics.ToString("X4"), item.Amount, color });
-					}
-
+					InitGrid(l.Description);
 					break;
 				}
 			}
 		}
-		internal static void CloneList(string newList)
+        internal static void InitGrid(string listname)
+        {
+            Engine.MainWindow.VendorSellGridView.Rows.Clear();
+            List<SellAgent.SellAgentItem> items = Settings.SellAgent.ItemsRead(listname);
+
+            foreach (SellAgentItem item in items)
+            {
+                string color = "All";
+                if (item.Color != -1)
+                    color = "0x" + item.Color.ToString("X4");
+
+                Engine.MainWindow.VendorSellGridView.Rows.Add(new object[] { item.Selected.ToString(), item.Name, "0x" + item.Graphics.ToString("X4"), item.Amount, color });
+            }
+        }
+
+        internal static void CloneList(string newList)
 		{
 			RazorEnhanced.Settings.SellAgent.ListInsert(newList, SellBag);
 
@@ -246,8 +276,8 @@ namespace RazorEnhanced
 				if (row.IsNewRow)
 					continue;
 
-				int color = 0;
-				if ((string)row.Cells[4].Value == "All")
+                int color;
+                if ((string)row.Cells[4].Value == "All")
 					color = -1;
 				else
 					color = Convert.ToInt32((string)row.Cells[4].Value, 16);
@@ -422,7 +452,7 @@ namespace RazorEnhanced
 	 		Assistant.Client.Instance.SendToServer(new VendorSellResponse(vendor, list));
 			AddLog("Sold " + sold.ToString() + " items for " + total.ToString() + " gold coins");
 			string message = "Enhanced Sell Agent: sold " + sold.ToString() + " items for " + total.ToString() + " gold coins";
-			World.Player.Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(message, "System", 1, "Vendor", vendor.Serial));          // Journal buffer
+			Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(message, "System", 1, "Vendor", vendor.Serial));          // Journal buffer
 			World.Player.SendMessage(message);
 			args.Block = true;
 		}
@@ -464,13 +494,13 @@ namespace RazorEnhanced
 				if (Engine.MainWindow.SellCheckBox.Checked == true) // Se è in esecuzione forza stop change list e restart
 				{
 					Assistant.Engine.MainWindow.SafeAction(s => s.SellCheckBox.Checked = false);
-					Assistant.Engine.MainWindow.SafeAction(s => s.SellListSelect.SelectedIndex = Engine.MainWindow.SellListSelect.Items.IndexOf(listName));  // change list
+					Assistant.Engine.MainWindow.SafeAction(s => { s.SellListSelect.SelectedIndex = Engine.MainWindow.SellListSelect.Items.IndexOf(listName); InitGrid(listName); });  // change list
 					Assistant.Engine.MainWindow.SafeAction(s => s.SellCheckBox.Checked = true);
 				}
 				else
 				{
-					Assistant.Engine.MainWindow.SafeAction(s => s.SellListSelect.SelectedIndex = Engine.MainWindow.SellListSelect.Items.IndexOf(listName));  // change list
-				}
+					Assistant.Engine.MainWindow.SafeAction(s => { s.SellListSelect.SelectedIndex = Engine.MainWindow.SellListSelect.Items.IndexOf(listName); InitGrid(listName); });  // change list
+                }
 			}
 		}
 		internal static bool UpdateListParam(string listName)
@@ -485,6 +515,10 @@ namespace RazorEnhanced
 		}
 	}
 
+
+    /// <summary>
+    /// The BuyAgent class allow you to interect with the BuyAgent, via scripting.
+    /// </summary>
 	public class BuyAgent
 	{
 		private static string m_listname;
@@ -492,16 +526,16 @@ namespace RazorEnhanced
 		[Serializable]
 		public class BuyAgentItem  : ListAbleItem
 		{
-			private string m_Name;
+			private readonly string m_Name;
 			public string Name { get { return m_Name; } }
 
-			private int m_Graphics;
+			private readonly int m_Graphics;
 			public int Graphics { get { return m_Graphics; } }
 
-			private int m_Amount;
+			private readonly int m_Amount;
 			public int Amount { get { return m_Amount; } }
 
-			private int m_Color;
+			private readonly int m_Color;
 			public int Color { get { return m_Color; } }
 
 			[JsonProperty("Selected")]
@@ -519,8 +553,8 @@ namespace RazorEnhanced
 
 		internal class BuyAgentList
 		{
-			private string m_Description;
-			private bool m_CompareName;
+			private readonly string m_Description;
+			private readonly bool m_CompareName;
 			internal string Description { get { return m_Description; } }
 
 			[JsonProperty("Selected")]
@@ -553,7 +587,7 @@ namespace RazorEnhanced
 				}
 		}
 
-	internal static void AddLog(string addlog)
+	    internal static void AddLog(string addlog)
 		{
 			if (Client.Running)
 			{
@@ -595,8 +629,8 @@ namespace RazorEnhanced
 				if (row.IsNewRow)
 					continue;
 
-				int color = 0;
-				if ((string)row.Cells[4].Value == "All")
+                int color;
+                if ((string)row.Cells[4].Value == "All")
 					color = -1;
 				else
 					color = Convert.ToInt32((string)row.Cells[4].Value, 16);
@@ -613,29 +647,31 @@ namespace RazorEnhanced
 		{
 			List<BuyAgentList> lists = Settings.BuyAgent.ListsRead();
 
-			Engine.MainWindow.VendorBuyDataGridView.Rows.Clear();
-
 			foreach (BuyAgentList l in lists)
 			{
 				if (l.Selected)
 				{
-					List<BuyAgentItem> items = Settings.BuyAgent.ItemsRead(l.Description);
-					
-					foreach (BuyAgentItem item in items)
-					{
-						string color = "All";
-						if (item.Color != -1)
-							color = "0x" + item.Color.ToString("X4");
-
-						Engine.MainWindow.VendorBuyDataGridView.Rows.Add(new object[] { item.Selected.ToString(), item.Name, "0x" + item.Graphics.ToString("X4"), item.Amount, color });
-					}
-
+					InitGrid(l.Description);
 					break;
 				}
 			}
 		}
+        internal static void InitGrid(string listName)
+        {
+            Engine.MainWindow.VendorBuyDataGridView.Rows.Clear();
+            List<BuyAgentItem> items = Settings.BuyAgent.ItemsRead(listName);
 
-		internal static void CloneList(string newList)
+            foreach (BuyAgentItem item in items)
+            {
+                string color = "All";
+                if (item.Color != -1)
+                    color = "0x" + item.Color.ToString("X4");
+
+                Engine.MainWindow.VendorBuyDataGridView.Rows.Add(new object[] { item.Selected.ToString(), item.Name, "0x" + item.Graphics.ToString("X4"), item.Amount, color });
+            }
+        }
+
+        internal static void CloneList(string newList)
 		{
 			RazorEnhanced.Settings.BuyAgent.ListInsert(newList);
 
@@ -644,8 +680,8 @@ namespace RazorEnhanced
 				if (row.IsNewRow)
 					continue;
 
-				int color = 0;
-				if ((string)row.Cells[4].Value == "All")
+                int color;
+                if ((string)row.Cells[4].Value == "All")
 					color = -1;
 				else
 					color = Convert.ToInt32((string)row.Cells[4].Value, 16);
@@ -766,7 +802,7 @@ namespace RazorEnhanced
 				
 				foreach (BuyAgentItem buyItem in items) // Scansione item presenti in lista agent item
 				{
-					int x = 0;
+					// int x = 0;
 					if (!buyItem.Selected)
 						continue;
 
@@ -798,13 +834,29 @@ namespace RazorEnhanced
 	 		Assistant.Client.Instance.SendToServer(new VendorBuyResponse(serial, buyList));
 
 			string message = "Enhanced Buy Agent: bought " + total.ToString() + " items for " + cost.ToString() + " gold coins";
-			World.Player.Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(message, "System", 1, "Vendor", vendor.Serial));          // Journal buffer
+			Journal.Enqueue(new RazorEnhanced.Journal.JournalEntry(message, "System", 1, "Vendor", vendor.Serial));          // Journal buffer
 			World.Player.SendMessage(message);
 			AddLog("Bought " + total.ToString() + " items for " + cost.ToString() + " gold coins");
 		}
 
-		// Funzioni da script
-		public static void Enable()
+
+        internal static bool UpdateListParam(string listName)
+        {
+            if (Settings.BuyAgent.ListExists(listName))
+            {
+                BuyAgent.CompareName = Settings.BuyAgent.CompareNameRead(listName);
+                BuyAgent.BuyListName = listName;
+                return true;
+            }
+            return false;
+        }
+
+        // Funzioni da script
+
+        /// <summary>
+        /// Enable BuyAgent on the currently active list.
+        /// </summary>
+        public static void Enable()
 		{
 			if (Engine.MainWindow.BuyCheckBox.Checked == true)
 			{
@@ -814,6 +866,9 @@ namespace RazorEnhanced
 				Assistant.Engine.MainWindow.SafeAction(s => s.BuyCheckBox.Checked = true);
 		}
 
+        /// <summary>
+        /// Disable BuyAgent Agent.
+        /// </summary>
 		public static void Disable()
 		{
 			if (Engine.MainWindow.BuyCheckBox.Checked == false)
@@ -824,23 +879,21 @@ namespace RazorEnhanced
 				Engine.MainWindow.SafeAction(s => s.BuyCheckBox.Checked = false);
 		}
 
+        /// <summary>
+        /// Check BuyAgent Agent status
+        /// </summary>
+        /// <returns>True: if the BuyAgent is active - False: otherwise</returns>
 		public static bool Status()
 		{
 			return Engine.MainWindow.BuyCheckBox.Checked;
 		}
 
-		internal static bool UpdateListParam(string listName)
-		{
-			if (Settings.BuyAgent.ListExists(listName))
-			{
-				BuyAgent.CompareName = Settings.BuyAgent.CompareNameRead(listName);
-				BuyAgent.BuyListName = listName;
-				return true;
-			}
-			return false;
-		}
 
-		public static void ChangeList(string listName)
+        /// <summary>
+        /// Change the BuyAgent's active list.
+        /// </summary>
+        /// <param name="listName">Name of an existing buy list.</param>
+        public static void ChangeList(string listName)
 		{
 
 			if (!UpdateListParam(listName))
@@ -852,12 +905,12 @@ namespace RazorEnhanced
 				if (Engine.MainWindow.BuyCheckBox.Checked == true) // Se è in esecuzione forza stop change list e restart
 				{
 					Assistant.Engine.MainWindow.SafeAction(s => s.BuyCheckBox.Checked = false);
-					Assistant.Engine.MainWindow.SafeAction(s => s.BuyListSelect.SelectedIndex = Engine.MainWindow.BuyListSelect.Items.IndexOf(listName));  // change list
+					Assistant.Engine.MainWindow.SafeAction(s => {s.BuyListSelect.SelectedIndex = Engine.MainWindow.BuyListSelect.Items.IndexOf(listName); InitGrid(listName); });  // change list
 					Assistant.Engine.MainWindow.SafeAction(s => s.BuyCheckBox.Checked = true);
 				}
 				else
 				{
-					Assistant.Engine.MainWindow.SafeAction(s => s.BuyListSelect.SelectedIndex = s.BuyListSelect.Items.IndexOf(listName));  // change list
+					Assistant.Engine.MainWindow.SafeAction(s => { s.BuyListSelect.SelectedIndex = s.BuyListSelect.Items.IndexOf(listName); InitGrid(listName); });  // change list
 				}
 			}
 		}

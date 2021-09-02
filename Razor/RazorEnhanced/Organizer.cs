@@ -10,7 +10,10 @@ using System.Windows.Forms;
 
 namespace RazorEnhanced
 {
-	public class Organizer
+    /// <summary>
+    /// The Organizer class allow you to interect with the Scavenger Agent, via scripting.
+    /// </summary>
+    public class Organizer
 	{
 		private static int m_dragdelay;
 		private static int m_sourcebag;
@@ -20,16 +23,16 @@ namespace RazorEnhanced
 		[Serializable]
 		public class OrganizerItem : ListAbleItem
 		{
-			private string m_Name;
+			private readonly string m_Name;
 			public string Name { get { return m_Name; } }
 
-			private int m_Graphics;
+			private readonly int m_Graphics;
 			public int Graphics { get { return m_Graphics; } }
 
-			private int m_Color;
+			private readonly int m_Color;
 			public int Color { get { return m_Color; } }
 
-			private int m_amount;
+			private readonly int m_amount;
 			public int Amount { get { return m_amount; } }
 
 			[JsonProperty("Selected")]
@@ -47,19 +50,19 @@ namespace RazorEnhanced
 
 		internal class OrganizerList
 		{
-			private string m_Description;
+			private readonly string m_Description;
 			internal string Description { get { return m_Description; } }
 
-			private int m_Delay;
+			private readonly int m_Delay;
 			internal int Delay { get { return m_Delay; } }
 
-			private int m_Source;
+			private readonly int m_Source;
 			internal int Source { get { return m_Source; } }
 
-			private int m_Destination;
+			private readonly int m_Destination;
 			internal int Destination { get { return m_Destination; } }
 
-			private bool m_Selected;
+			private readonly bool m_Selected;
 			internal bool Selected { get { return m_Selected; } }
 
 			public OrganizerList(string description, int delay, int source, int destination, bool selected)
@@ -155,14 +158,14 @@ namespace RazorEnhanced
 				if (row.IsNewRow)
 					continue;
 
-				int color = 0;
-				if ((string)row.Cells[3].Value == "All")
+                int color;
+                if ((string)row.Cells[3].Value == "All")
 					color = -1;
 				else
 					color = Convert.ToInt32((string)row.Cells[3].Value, 16);
 
-				int amount = 0;
-				if ((string)row.Cells[4].Value == "All")
+                int amount;
+                if ((string)row.Cells[4].Value == "All")
 					amount = -1;
 				else
 					amount = Convert.ToInt32((string)row.Cells[4].Value);
@@ -179,32 +182,39 @@ namespace RazorEnhanced
 		{
 			List<OrganizerList> lists = Settings.Organizer.ListsRead();
 
-			Assistant.Engine.MainWindow.OrganizerDataGridView.Rows.Clear();
-
 			foreach (OrganizerList l in lists)
 			{
 				if (l.Selected)
 				{
-					List<Organizer.OrganizerItem> items = Settings.Organizer.ItemsRead(l.Description);
-
-					foreach (OrganizerItem item in items)
-					{
-						string color = "All";
-						if (item.Color != -1)
-							color = "0x" + item.Color.ToString("X4");
-
-						string amount = "All";
-						if (item.Amount != -1)
-							amount = item.Amount.ToString();
-
-						Assistant.Engine.MainWindow.OrganizerDataGridView.Rows.Add(new object[] { item.Selected.ToString(), item.Name, "0x" + item.Graphics.ToString("X4"), color, amount });
-					}
-
+                    InitGrid(l.Description);
 					break;
 				}
 			}
 		}
-		internal static void CloneList(string newList)
+
+        internal static void InitGrid(string listName)
+        {
+            Assistant.Engine.MainWindow.OrganizerDataGridView.Rows.Clear();
+
+            List<Organizer.OrganizerItem> items = Settings.Organizer.ItemsRead(listName);
+
+            foreach (OrganizerItem item in items)
+            {
+                string color = "All";
+                if (item.Color != -1)
+                    color = "0x" + item.Color.ToString("X4");
+
+                string amount = "All";
+                if (item.Amount != -1)
+                    amount = item.Amount.ToString();
+
+                Assistant.Engine.MainWindow.OrganizerDataGridView.Rows.Add(new object[] { item.Selected.ToString(), item.Name, "0x" + item.Graphics.ToString("X4"), color, amount });
+            }
+        }
+
+
+
+        internal static void CloneList(string newList)
 		{
 			RazorEnhanced.Settings.Organizer.ListInsert(newList, RazorEnhanced.Organizer.OrganizerDelay, OrganizerSource, OrganizerDestination);
 
@@ -213,14 +223,14 @@ namespace RazorEnhanced
 				if (row.IsNewRow)
 					continue;
 
-				int color = 0;
-				if ((string)row.Cells[3].Value == "All")
+                int color;
+                if ((string)row.Cells[3].Value == "All")
 					color = -1;
 				else
 					color = Convert.ToInt32((string)row.Cells[3].Value, 16);
 
-				int amount = 0;
-				if ((string)row.Cells[4].Value == "All")
+                int amount;
+                if ((string)row.Cells[4].Value == "All")
 					amount = -1;
 				else
 					amount = Convert.ToInt32((string)row.Cells[4].Value);
@@ -276,10 +286,13 @@ namespace RazorEnhanced
 			Item sourceBag = Items.FindBySerial(sourceBagserail);
 			Item destinationBag = Items.FindBySerial(destinationBagserial);
 
-			// Check if container is updated
-			RazorEnhanced.Organizer.AddLog("- Refresh Source Container");
-			Items.WaitForContents(sourceBag, 1000);
-			Thread.Sleep(mseconds);
+            // Check if container is updated
+            if (sourceBag.Updated == false)
+            {
+                RazorEnhanced.Organizer.AddLog("- Refresh Source Container");
+                Items.WaitForContents(sourceBag, 1000);
+                Thread.Sleep(mseconds);
+            }
 
 			// Inizia scansione
 			foreach (RazorEnhanced.Item oggettoContenuto in sourceBag.Contains)
@@ -330,10 +343,16 @@ namespace RazorEnhanced
 
         public static void RunOnce(string organizerName, int sourceBag, int destBag, int dragDelay)
         {
+
+            int bagsource;
+            int bagdestination;
+            int delay;
+            Settings.Organizer.ListDetailsRead(organizerName, out bagsource, out bagdestination, out delay);
+
             // Check Bag
             if (sourceBag == -1)
             {
-                sourceBag = m_sourcebag;
+                sourceBag = bagsource;
             }
             Assistant.Item sbag = Assistant.World.FindItem(sourceBag);
             if (sbag == null)
@@ -344,7 +363,7 @@ namespace RazorEnhanced
 
             if (destBag == -1)
             {
-                destBag = m_destinationbag;
+                destBag = bagdestination;
             }
             Assistant.Item dbag = Assistant.World.FindItem(destBag);
             if (dbag == null)
@@ -355,7 +374,7 @@ namespace RazorEnhanced
 
             if (dragDelay == -1)
             {
-                dragDelay = m_dragdelay;
+                dragDelay = delay;
             }
 
             List<RazorEnhanced.Organizer.OrganizerItem>  organizerList = Settings.Organizer.ItemsRead(organizerName);
@@ -411,8 +430,12 @@ namespace RazorEnhanced
 			}
 		}
 
-		// Funzioni da script
-		public static void FStart()
+        // Funzioni da script
+
+        /// <summary>
+        /// Start the Organizer Agent on the currently active list.
+        /// </summary>
+        public static void FStart()
 		{
 			if (Assistant.Engine.MainWindow.OrganizerExecute.Enabled == true)
 				Assistant.Engine.MainWindow.OrganizerStartExec();
@@ -422,6 +445,10 @@ namespace RazorEnhanced
 			}
 		}
 
+
+        /// <summary>
+        /// Stop the Organizer Agent.
+        /// </summary>
 		public static void FStop()
 		{
 			if (Assistant.Engine.MainWindow.OrganizerStop.Enabled == true)
@@ -432,6 +459,10 @@ namespace RazorEnhanced
 			}
 		}
 
+        /// <summary>
+        /// Check Organizer Agent status
+        /// </summary>
+        /// <returns>True: if the Organizer is running - False: otherwise</returns>
 		public static bool Status()
 		{
 			if (m_OrganizerThread != null && ((m_OrganizerThread.ThreadState & ThreadState.Running) != 0 || (m_OrganizerThread.ThreadState & ThreadState.WaitSleepJoin) != 0 || (m_OrganizerThread.ThreadState & ThreadState.AbortRequested) != 0))
@@ -440,7 +471,12 @@ namespace RazorEnhanced
 				return false;
 		}
 
-		public static void ChangeList(string listName)
+
+        /// <summary>
+        /// Change the Organizer's active list.
+        /// </summary>
+        /// <param name="listName">Name of an existing organizer list.</param>
+        public static void ChangeList(string listName)
 		{
 			if (!UpdateListParam(listName))
 			{
@@ -448,17 +484,17 @@ namespace RazorEnhanced
 			}
 			else
 			{
-				if (Assistant.Engine.MainWindow.OrganizerStop.Enabled == true) // Se è in esecuzione forza stop change list e restart
-				{
-					Assistant.Engine.MainWindow.SafeAction(s => s.OrganizerStop.PerformClick());
-					Assistant.Engine.MainWindow.SafeAction(s => s.OrganizerListSelect.SelectedIndex = Assistant.Engine.MainWindow.OrganizerListSelect.Items.IndexOf(listName));  // change list
-					Assistant.Engine.MainWindow.SafeAction(s => s.OrganizerExecute.PerformClick());
+                if (Assistant.Engine.MainWindow.OrganizerStop.Enabled == true) // Se è in esecuzione forza stop change list e restart
+                {
+                    Assistant.Engine.MainWindow.SafeAction(s => s.OrganizerStop.PerformClick());
+                    Assistant.Engine.MainWindow.SafeAction(s => { s.OrganizerListSelect.SelectedIndex = s.OrganizerListSelect.Items.IndexOf(listName); Organizer.InitGrid(listName); });  // change list
+                    Assistant.Engine.MainWindow.SafeAction(s => s.OrganizerExecute.PerformClick());
+                }
+                else
+                {
+                    Assistant.Engine.MainWindow.SafeAction(s => {s.OrganizerListSelect.SelectedIndex = s.OrganizerListSelect.Items.IndexOf(listName); Organizer.InitGrid(listName); });  // change list
 				}
-				else
-				{
-					Assistant.Engine.MainWindow.SafeAction(s => s.OrganizerListSelect.SelectedIndex = s.OrganizerListSelect.Items.IndexOf(listName));  // change list
-				}
-			}
+            }
 		}
 
 		internal static bool UpdateListParam(string listName)

@@ -191,21 +191,12 @@ namespace Assistant
         [STAThread]
         public static void Main(string[] Args)
         {
-            //Dalamar
-            //TODO: is this a good entry point for generating the docs ? 
-            if ( !RazorEnhanced.AutoDocIO.JsonDocExists() ) { 
-                RazorEnhanced.AutoDocIO.ExportPythonAPI();
-                //RazorEnhanced.AutoDocIO.ExportPy();
-                //RazorEnhanced.AutoDocIO.ExportHTML();
-                //RazorEnhanced.AutoDocIO.ExportMKDocs();
-            }
-            RazorEnhanced.Config.LoadAll();
 
             Application.ThreadException += ApplicationThreadException;
 
 			AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
 
-			Thread.CurrentThread.Name = "Assistant Main Thread";
+			Thread.CurrentThread.Name = "Razor Main Thread";
 			Client.Instance = new OSIClient();
 			bool shardSelected = Client.Instance.Init(true);
 			if (shardSelected)
@@ -268,12 +259,12 @@ namespace Assistant
 
 		internal static void ReportCrash(Exception exception)
 		{
-			ReportCrash reportCrash = new ReportCrash("razorenhanced@gmail.com");
+			ReportCrash reportCrash = new ReportCrash("crashreports@uoforever.com");
 			reportCrash.CaptureScreen = true;
 			reportCrash.IncludeScreenshot = true;
 			reportCrash.DoctorDumpSettings = new DoctorDumpSettings
 			{
-				ApplicationID = new Guid("87af7b0b-2407-4944-b572-caee9d031325"),
+				ApplicationID = new Guid("8e1fd37f-a3c3-421b-b959-c6d03e98a38c"),
 			};
 			reportCrash.Send(exception);
 		}

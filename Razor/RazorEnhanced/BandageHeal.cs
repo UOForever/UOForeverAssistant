@@ -225,6 +225,7 @@ namespace RazorEnhanced
             CustomID = Settings.General.ReadInt("BandageHealcustomIDTextBox");
             CustomColor = Settings.General.ReadInt("BandageHealcustomcolorTextBox");
             Engine.MainWindow.BandageHealdexformulaCheckBox.Checked = Settings.General.ReadBool("BandageHealdexformulaCheckBox");
+            Engine.MainWindow.BandageHealTimeWithBuf.Checked = Settings.General.ReadBool("BandageHealTimeWithBuf");
             CustomDelay = Settings.General.ReadInt("BandageHealdelayTextBox");
             HpLimit = Settings.General.ReadInt("BandageHealhpTextBox");
             MaxRange = Settings.General.ReadInt("BandageHealMaxRangeTextBox");
@@ -235,7 +236,6 @@ namespace RazorEnhanced
             SelfHealUseText = Settings.General.ReadBool("BandageHealUseText");
             SelfHealUseTextSelfContent = Settings.General.ReadString("BandageHealUseTextSelfContent");
             SelfHealUseTextContent = Settings.General.ReadString("BandageHealUseTextContent");
-
 
             Engine.MainWindow.BandageHealAutostartCheckBox.Checked = Settings.General.ReadBool("BandageHealAutostartCheckBox");
 
@@ -282,8 +282,6 @@ namespace RazorEnhanced
                         return;
                 }
 
-                // Id base bende
-                int bandageamount = 0;
                 int bandageid = 0x0E21;
                 int bandagecolor = -1;
 
@@ -294,8 +292,9 @@ namespace RazorEnhanced
                 }
                 int bandageserial = SearchBandage(bandageid, bandagecolor); // Get serial bende
 
+                // Id base bende
                 // Conteggio bende
-                bandageamount = RazorEnhanced.Items.BackpackCount(bandageid, bandagecolor);
+                int bandageamount = RazorEnhanced.Items.BackpackCount(bandageid, bandagecolor);
                 if (bandageamount == 0)
                 {
                     Player.HeadMessage(10, "Bandage not found");
@@ -353,7 +352,7 @@ namespace RazorEnhanced
                             while (first > 0)
                             {
                                 Player.HeadMessage(10, (first / 1000).ToString());
-                                first = first - 1000;
+                                first -= 1000;
                                 Thread.Sleep(1000);
                             }
                             Thread.Sleep(second + 300);           // Pausa dei decimali rimasti
@@ -361,6 +360,35 @@ namespace RazorEnhanced
                         else
                         {
                             Thread.Sleep((Int32)delay + 300);
+                        }
+                    }
+                    else if (RazorEnhanced.Settings.General.ReadBool("BandageHealTimeWithBuf"))
+                    {
+                        // First wait for buf to start, but no more than 2 seconds
+                        int delay = 100;
+                        int countdown = 2000;
+                        while (!Player.BuffsExist("Healing"))
+                        {
+                            Thread.Sleep(delay);
+                            countdown -= delay;
+                            if (countdown <= 0)
+                                break;
+                        }
+                        countdown = 10000;
+                        delay = 1000;
+                        int seconds = 0;
+                        while (Player.BuffsExist("Healing"))
+                        {
+                            Thread.Sleep(delay);
+                            countdown -= delay;
+                            if (countdown <= 0)
+                                break;
+
+                            if (ShowCountdown)          // Se deve mostrare il cooldown
+                            {
+                                seconds++;
+                                Player.HeadMessage(10, seconds.ToString());
+                            }
                         }
                     }
                     else                // Se ho un delay custom
@@ -399,8 +427,6 @@ namespace RazorEnhanced
         }
         internal static void Heal(Assistant.Mobile target)
         {
-            // Id base bende
-            int bandageamount = 0;
             int bandageid = 0x0E21;
             int bandagecolor = -1;
 
@@ -411,8 +437,9 @@ namespace RazorEnhanced
             }
             int bandageserial = SearchBandage(bandageid, bandagecolor); // Get serial bende
 
+            // Id base bende
             // Conteggio bende
-            bandageamount = RazorEnhanced.Items.BackpackCount(bandageid, bandagecolor);
+            int bandageamount = Items.BackpackCount(bandageid, bandagecolor);
             if (bandageamount == 0)
             {
                 Player.HeadMessage(10, "Bandage not found");
@@ -470,7 +497,7 @@ namespace RazorEnhanced
                         while (first > 0)
                         {
                             Player.HeadMessage(10, (first / 1000).ToString());
-                            first = first - 1000;
+                            first -= 1000;
                             Thread.Sleep(1000);
                         }
                         Thread.Sleep(second + 300);           // Pausa dei decimali rimasti
@@ -566,7 +593,7 @@ namespace RazorEnhanced
                                 pct_life_friend = 100 * targ.Hits / targ.HitsMax;
                             }
 
-                            int pct_life_me = 100;
+                            int pct_life_me;
                             {
                                 pct_life_me = 100 * World.Player.Hits / World.Player.HitsMax;
                             }
@@ -592,6 +619,10 @@ namespace RazorEnhanced
         }
 
         // Funzioni da script
+
+        /// <summary>
+        /// Start BandageHeal Agent.
+        /// </summary>
         public static void Start()
         {
             if (Assistant.Engine.MainWindow.BandageHealenableCheckBox.Checked == true)
@@ -602,6 +633,9 @@ namespace RazorEnhanced
                 Assistant.Engine.MainWindow.SafeAction(s => s.BandageHealenableCheckBox.Checked = true);
         }
 
+        /// <summary>
+        /// Stop BandageHeal Agent.
+        /// </summary>
         public static void Stop()
         {
             if (Assistant.Engine.MainWindow.BandageHealenableCheckBox.Checked == false)
@@ -612,6 +646,10 @@ namespace RazorEnhanced
                 Assistant.Engine.MainWindow.SafeAction(s => s.BandageHealenableCheckBox.Checked = false);
         }
 
+        /// <summary>
+        /// Check BandageHeal Agent status, returns a bool value.
+        /// </summary>
+        /// <returns>True: is running - False: otherwise</returns>
         public static bool Status()
         {
             return Assistant.Engine.MainWindow.BandageHealenableCheckBox.Checked;
@@ -633,7 +671,7 @@ namespace RazorEnhanced
 
             foreach (Item found in containeritem)
             {
-                if (!found.IsInBank && found.RootContainer == World.Player.Serial)
+                if (found.RootContainer == World.Player.Backpack.Serial)
                 {
                     return found.Serial;
                 }
@@ -641,7 +679,7 @@ namespace RazorEnhanced
             return 0;
         }
 
-        private static Assistant.Timer m_autostart = Assistant.Timer.DelayedCallback(TimeSpan.FromSeconds(3.0), new Assistant.TimerCallback(Start));
+        private static readonly Assistant.Timer m_autostart = Assistant.Timer.DelayedCallback(TimeSpan.FromSeconds(3.0), new Assistant.TimerCallback(Start));
 
         internal static void LoginAutostart()
         {

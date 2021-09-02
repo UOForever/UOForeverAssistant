@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace Assistant
 {
@@ -49,46 +50,100 @@ namespace Assistant
 		LastValid = 0x1D
 	}
 
-	public class Item : UOEntity
-	{
-		private ItemID m_ItemID;
-		private ushort m_Amount;
-		private byte m_Direction;
+    public class Item : UOEntity
+    {
+        private ItemID m_ItemID;
+        private ushort m_Amount;
+        private byte m_Direction;
 
-		private bool m_Visible;
-		private bool m_Movable;
+        private bool m_Visible;
+        private bool m_Movable;
 
-		private bool m_PropsUpdated;
+        private bool m_PropsUpdated;
 
-		private Layer m_Layer;
-		private string m_Name;
-		private object m_Parent;
-		private int m_Price;
-		private string m_BuyDesc;
-		private List<Item> m_Items;
+        private Layer m_Layer;
+        private string m_Name;
+        private object m_Parent;
+        private int m_Price;
+        private string m_BuyDesc;
+        private readonly List<Item> m_Items;
 
-		private bool m_IsNew;
-		private bool m_AutoStack;
+        private bool m_IsNew;
+        private bool m_AutoStack;
 
-		private byte[] m_HousePacket;
-		private int m_HouseRev;
+        private byte[] m_HousePacket;
+        private int m_HouseRev;
 
-		private byte m_GridNum;
+        private byte m_GridNum;
 
-		private bool m_Updated;
+        private bool m_Updated;
 
         private static readonly object LockingVar = new object();
-		internal bool Updated
-		{
-			get { return m_Updated; }
-			set
-			{
-				if (this.IsContainer || this.IsCorpse)
-				{
-					m_Updated = value;
-				}
-			}
-		}
+        internal bool Updated
+        {
+            get { return m_Updated; }
+            set
+            {
+                if (this.IsContainer || this.IsCorpse)
+                {
+                    m_Updated = value;
+                }
+            }
+        }
+        public class Weapon
+        {
+            [JsonProperty("name")]
+            public string Name { get; set; }
+
+            [JsonProperty("graphic")]
+            public int Graphic { get; set; }
+
+            [JsonProperty("primary")]
+            public string Primary { get; set; }
+
+            [JsonProperty("secondary")]
+            public string Secondary { get; set; }
+
+            [JsonProperty("twohanded")]
+            public bool Twohanded { get; set; }
+
+        }
+        private static readonly ConcurrentDictionary<int, Weapon> g_weapons = LoadWeapons();
+        internal static ConcurrentDictionary<int, Weapon> Weapons { get { return g_weapons; } }
+
+        internal static ConcurrentDictionary<int, Weapon> LoadWeapons()
+        {
+            ConcurrentDictionary<int, Weapon> retSet = new ConcurrentDictionary<int, Weapon>();
+            try
+            {
+                lock (LockingVar)
+                {
+                    string pathName = Path.Combine(Assistant.Engine.RootPath, "Config", "weapons.json");
+                    if (File.Exists(pathName))
+                    {
+                        List<Weapon> weaponList = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Weapon>>(File.ReadAllText(pathName));
+                        foreach (Weapon w in weaponList)
+                        {
+                            retSet[w.Graphic] = w;
+                        }
+                    }
+                    pathName = Path.Combine(Assistant.Engine.RootPath, "Data", "weapons.json");
+                    if (File.Exists(pathName))
+                    {
+                        List<Weapon> weaponList = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Weapon>>(File.ReadAllText(pathName));
+                        foreach (Weapon w in weaponList)
+                        {
+                            retSet[w.Graphic] =  w;
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                System.Windows.Forms.MessageBox.Show("Error loading Config/weapons.json");
+            }
+            return retSet;
+        }
 
         public static Item Factory(Serial serial, UInt32 itemID)
         {
@@ -99,7 +154,7 @@ namespace Assistant
                 // Because the itemID of dragged items is not on a drop packet
                 itemID = DragDropManager.Holding.ItemID;
             }
-            Item item = null;
+            Item item;
             switch (itemID)
             {
                 case 0x14EC:
@@ -136,7 +191,9 @@ namespace Assistant
 			set { m_ItemID = value; }
 		}
 
-		internal bool PropsUpdated
+        internal byte ArtID { get; set; }
+
+        internal bool PropsUpdated
 		{
 			get { return m_PropsUpdated; }
 			set { m_PropsUpdated = value; }
@@ -144,7 +201,21 @@ namespace Assistant
 
 		internal ushort Amount
 		{
-			get { return m_Amount; }
+			get {
+                // On OSI the amount value is used for other purposes if an item is declared not stackable in files.
+                try // avoid crash if some bad happen in Ultima.dll
+                {
+                    if ((Ultima.TileData.ItemTable[ItemID].Flags & Ultima.TileFlag.Generic) != 0)
+                        return m_Amount;
+                    if (ItemID == 0x2006)
+                        return m_Amount;
+                }
+                catch
+                {
+                }
+
+                return 1;
+            }
 			set { m_Amount = value; }
 		}
 
@@ -200,7 +271,21 @@ namespace Assistant
 				{
 					m_Layer = (Layer)this.ItemID.ItemData.Quality;
 				}
-				return m_Layer;
+
+                if ((this.ItemID.ItemData.Flags & Ultima.TileFlag.Weapon) != 0) 
+                {
+                    Weapon w;
+                    bool found = Weapons.TryGetValue(this.m_ItemID, out w);
+                    if (found)
+                    {
+                        if (w.Twohanded == true && IsTwoHanded == false)
+                        {
+                            m_Layer = Layer.RightHand; // artificially 2 hand is a 1 hand (some servers allow this)
+                        }
+                    }
+                }
+
+                return m_Layer;
 			}
 			set
 			{
@@ -230,22 +315,6 @@ namespace Assistant
 				}
 			}
 			return null;
-		}
-
-		internal int GetCount(ushort iid)
-		{
-			int count = 0;
-			foreach (Item item in m_Items)
-			{
-				if (item.ItemID == iid)
-					count += item.Amount;
-				// fucking osi blank scrolls
-				else if ((item.ItemID == 0x0E34 && iid == 0x0EF3) || (item.ItemID == 0x0EF3 && iid == 0x0E34))
-					count += item.Amount;
-				count += item.GetCount(iid);
-			}
-
-			return count;
 		}
 
 		internal object Container
@@ -313,7 +382,7 @@ namespace Assistant
 
                     if (RazorEnhanced.Settings.General.ReadBool("AutoSearch")
                         && IsContainer
-                        && !(IsPouch && RazorEnhanced.Settings.General.ReadBool("NoSearchPouches"))
+                        && !(IsSearchable && RazorEnhanced.Settings.General.ReadBool("NoSearchPouches"))
                         && !this.IsBagOfSending
                         )
                     {
@@ -325,7 +394,7 @@ namespace Assistant
                             Item icheck = (Item)Contains[c];
                             if (icheck.IsContainer)
                             {
-                                if (icheck.IsPouch && RazorEnhanced.Settings.General.ReadBool("NoSearchPouches"))
+                                if (icheck.IsSearchable && RazorEnhanced.Settings.General.ReadBool("NoSearchPouches"))
                                     continue;
                                 if (icheck.IsBagOfSending)
                                     continue;
@@ -341,7 +410,7 @@ namespace Assistant
 			return true;
 		}
 
-		private static List<Item> m_NeedContUpdate = new List<Item>();
+		private static readonly List<Item> m_NeedContUpdate = new List<Item>();
 
 		internal static void UpdateContainers()
 		{
@@ -355,7 +424,7 @@ namespace Assistant
 			}
 		}
 
-		private static List<Serial> m_AutoStackCache = new List<Serial>();
+		private static readonly List<Serial> m_AutoStackCache = new List<Serial>();
 
 		internal void AutoStackResource()
 		{
@@ -378,15 +447,31 @@ namespace Assistant
 
 		internal object RootContainer
 		{
-			get
-			{
-				int die = 100;
-				object cont = this.Container;
-				while (cont != null && cont is Item && die-- > 0)
-					cont = ((Item)cont).Container;
+            get
+            {
+                // if container is null or not an item just return it
+                if (this.Container == null)
+                    return this.Container;
 
-				return cont;
-			}
+                if (! (this.Container is Item) )
+                    return this.Container;
+
+                // try to search parent containers until parent is null or not an item
+                // example of ! an Item is Player -> Backpack -> Items
+                // the root of Items should be Backpack not player even though the Container of a Backpack is the player
+                //
+                // if more than 100 give up and return original Container
+                int maxTry = 100;
+                Item cont = (Item)this.Container;
+                while (cont.Container != null && (cont.Container is Item))
+                {
+                    cont = (Item)cont.Container;
+                    if (maxTry-- < 1)
+                        return this.Container;
+                }
+
+                return cont;
+            }
 		}
 
 		internal bool IsChildOf(object parent)
@@ -544,28 +629,45 @@ namespace Assistant
 
 		internal bool OnGround { get { return Container == null; } }
 
-
-        internal static ConcurrentHashSet<int> LoadContainersData()
+        public class ContainerData
         {
-            lock (LockingVar)
-            {
-                string pathName = Path.Combine(Assistant.Engine.RootPath, "Data", "ContainersData.json");
-                if (File.Exists(pathName))
-                {
-                    string containersData = File.ReadAllText(pathName);
-                    return Newtonsoft.Json.JsonConvert.DeserializeObject<ConcurrentHashSet<int>>(containersData);
-                }
-                pathName = Path.Combine(Assistant.Engine.RootPath, "Config", "ContainersData.json");
-                if (File.Exists(pathName))
-                {
-                    string containersData = File.ReadAllText(pathName);
-                    return Newtonsoft.Json.JsonConvert.DeserializeObject<ConcurrentHashSet<int>>(containersData);
-                }
-            }
-                return new ConcurrentHashSet<int>();
+                [JsonProperty("ItemID")]
+                public int ItemID { get; set; }
+
+                [JsonProperty("Searchable")]
+                public bool Searchable { get; set; }
         }
 
-        internal static ConcurrentHashSet<int> m_containerID = LoadContainersData();
+        internal static ConcurrentDictionary<int, ContainerData> LoadContainersData()
+        {
+            ConcurrentDictionary<int, ContainerData> retContData = new ConcurrentDictionary<int, ContainerData>();
+            lock (LockingVar)
+            {
+                string pathName = Path.Combine(Assistant.Engine.RootPath, "Config", "ContainersData.json");
+                if (File.Exists(pathName))
+                {
+                    string containersData = File.ReadAllText(pathName);
+                    List<ContainerData> contData = Newtonsoft.Json.JsonConvert.DeserializeObject<List<ContainerData>>(containersData);
+                    foreach (var cont in contData)
+                    {
+                        retContData[cont.ItemID] = cont;
+                    }
+                }
+                pathName = Path.Combine(Assistant.Engine.RootPath, "Data", "ContainersData.json");
+                if (File.Exists(pathName))
+                {
+                    string containersData = File.ReadAllText(pathName);
+                    List<ContainerData> contData = Newtonsoft.Json.JsonConvert.DeserializeObject<List<ContainerData>>(containersData);
+                    foreach (var cont in contData)
+                    {
+                        retContData[cont.ItemID] = cont;
+                    }
+                }
+            }
+            return retContData;
+        }
+
+        internal static ConcurrentDictionary<int, ContainerData> m_containerID = LoadContainersData();
 
 		internal bool IsContainer
 		{
@@ -577,14 +679,52 @@ namespace Assistant
 				if (m_Items.Count > 0)
 					return true;
 
-				if (m_containerID.Contains(m_ItemID.Value))
+				if (m_containerID.ContainsKey(m_ItemID.Value))
 					return true;
 				else
 					return false;
 			}
 		}
 
-		internal bool IsBagOfSending
+
+        internal bool IsInBackpack
+        {
+            get
+            {
+                if (RootContainer == World.Player.Backpack)
+                    return true;
+                if (this == World.Player.Backpack)
+                    return true;
+
+                return false;
+            }
+        }
+
+        internal bool IsLootableTarget
+        {
+            get
+            {
+                //if (IsBagOfSending)
+                //    return false;
+                // Should be false but checking for it is difficult
+
+                if (!IsContainer)
+                    return false;
+
+                if (IsInBank)
+                    return false;
+
+                if (RootContainer == World.Player.Backpack)
+                    return true;
+                if (this == World.Player.Backpack)
+                    return true;
+
+                return false;
+
+            }
+        }
+
+        internal bool IsBagOfSending
 		{
 			get
 			{
@@ -622,9 +762,21 @@ namespace Assistant
 			get { return m_ItemID.Value >= 0x4000; }
 		}
 
-		internal bool IsPouch
+		internal bool IsSearchable
 		{
-			get { return m_ItemID.Value == 0x0E79; }
+            get
+            {
+                if (IsCorpse)
+                    return false;
+
+                if (m_Items.Count > 0)
+                    return true;
+
+                if (m_containerID.ContainsKey(m_ItemID.Value))
+                    return m_containerID[m_ItemID.Value].Searchable;
+                else
+                    return m_ItemID.Value == 0x0E79; 
+            }
 		}
 
 		internal bool IsCorpse
@@ -632,28 +784,34 @@ namespace Assistant
 			get { return m_ItemID.Value == 0x2006 || (m_ItemID.Value >= 0x0ECA && m_ItemID.Value <= 0x0ED2); }
 		}
 
-        internal static ConcurrentHashSet<int> LoadDoorData()
+        internal static ConcurrentHashSet<uint> LoadDoorData()
         {
+            ConcurrentHashSet<uint> ret = new ConcurrentHashSet<uint>();
             lock (LockingVar)
             {
 
-                string pathName = Path.Combine(Assistant.Engine.RootPath, "Data", "DoorData.json");
+                string pathName = Path.Combine(Assistant.Engine.RootPath, "Config", "DoorData.json");
                 if (File.Exists(pathName))
                 {
                     string doorData = File.ReadAllText(pathName);
-                    return Newtonsoft.Json.JsonConvert.DeserializeObject<ConcurrentHashSet<int>>(doorData);
+                    ret = Newtonsoft.Json.JsonConvert.DeserializeObject<ConcurrentHashSet<uint>>(doorData);
                 }
-                pathName = Path.Combine(Assistant.Engine.RootPath, "Config", "DoorData.json");
+                pathName = Path.Combine(Assistant.Engine.RootPath, "Data", "DoorData.json");
                 if (File.Exists(pathName))
                 {
                     string doorData = File.ReadAllText(pathName);
-                    return Newtonsoft.Json.JsonConvert.DeserializeObject<ConcurrentHashSet<int>>(doorData);
+                    ConcurrentHashSet<uint> dataDoors = Newtonsoft.Json.JsonConvert.DeserializeObject<ConcurrentHashSet<uint>>(doorData);
+                    foreach (var door in dataDoors)
+                    {
+                        ret.Add(door);
+                    }
                 }
+
             }
-            return new ConcurrentHashSet<int>();
+            return ret;
         }
 
-        internal static ConcurrentHashSet<int> DoorData = LoadDoorData();
+        internal static ConcurrentHashSet<uint> DoorData = LoadDoorData();
 
         internal bool IsDoor
 		{
@@ -687,7 +845,7 @@ namespace Assistant
         }
 
         //hair beards and horns
-        static ConcurrentHashSet<int> NotLootable = LoadNotLootableData();
+        static readonly ConcurrentHashSet<int> NotLootable = LoadNotLootableData();
         internal  bool IsLootable
         {
             // Eventine owner found looting items was trying to loot hair and beards.
@@ -738,12 +896,28 @@ namespace Assistant
 			get
 			{
 				ushort iid = m_ItemID.Value;
-				return (
+                if (World.Player != null) // non loggato
+                {
+                    if (m_PropsUpdated)
+                    { 
+                        foreach (var prop in m_ObjPropList.Content)
+                        {
+                            string propString = prop.ToString();
+                            if (propString.ToLower().Contains("one-handed"))
+                                return false;
+                        }
+                    }
+                }
+                Weapon w;
+                bool found = Weapons.TryGetValue(iid, out w);
+                if (found)
+                    return w.Twohanded;
+
+                return (
 						// everything in layer 2 except shields is 2handed
 						Layer == Layer.LeftHand &&
 						!((iid >= 0x1b72 && iid <= 0x1b7b) || IsVirtueShield) // shields
 					) ||
-
 					// and all of these layer 1 weapons:
 					(iid == 0x13fc || iid == 0x13fd) || // hxbow
 					(iid == 0x13AF || iid == 0x13b2) || // war axe & bow
@@ -876,7 +1050,7 @@ namespace Assistant
                 // The m_FakePropIndex at this point was beyond the end of the array
                 m_ObjPropList.Content[m_FakePropIndex] = new Assistant.ObjectPropertyList.OPLEntry(1042971, location);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // shold do something, but ...
             }

@@ -18,6 +18,10 @@ namespace RazorEnhanced
 
     };
 
+
+    /// <summary>
+    /// The Autoloot class allow to interact with the Autoloot Agent, via scripting.
+    /// </summary>
     public class AutoLoot
     {
         private static int m_lootdelay;
@@ -25,22 +29,22 @@ namespace RazorEnhanced
         private static int m_autolootbag;
         private static bool m_noopencorpse;
         private static string m_autolootlist;
-        private static Queue<int> m_IgnoreCorpseList = new Queue<int>();
+        private static readonly Queue<int> m_IgnoreCorpseList = new Queue<int>();
         internal static volatile bool LockTable = false;
 
         public class AutoLootItem : ListAbleItem
         {
             public class Property
             {
-                private string m_Name;
+                private readonly string m_Name;
                 [JsonProperty("Name")]
                 public string Name { get { return m_Name; } }
 
-                private int m_Minimum;
+                private readonly int m_Minimum;
                 [JsonProperty("Minimum")]
                 public int Minimum { get { return m_Minimum; } }
 
-                private int m_Maximum;
+                private readonly int m_Maximum;
                 [JsonProperty("Maximum")]
                 public int Maximum { get { return m_Maximum; } }
 
@@ -52,13 +56,13 @@ namespace RazorEnhanced
                 }
             }
 
-            private string m_Name;
+            private readonly string m_Name;
             public string Name { get { return m_Name; } }
 
-            private int m_Graphics;
+            private readonly int m_Graphics;
             public int Graphics { get { return m_Graphics; } }
 
-            private int m_Color;
+            private readonly int m_Color;
             public int Color { get { return m_Color; } }
 
             [JsonProperty("LootBagOverride")]
@@ -68,7 +72,7 @@ namespace RazorEnhanced
             [JsonProperty("Selected")]
             public bool Selected { get; set; }
 
-            private List<Property> m_Properties;
+            private readonly List<Property> m_Properties;
             public List<Property> Properties { get { return m_Properties; } }
 
             public AutoLootItem(string name, int graphics, int color, bool selected, int lootBag, List<Property> properties)
@@ -84,10 +88,10 @@ namespace RazorEnhanced
 
         public class SerialToGrab
         {
-            private int m_corpseserial;
+            private readonly int m_corpseserial;
             public int CorpseSerial { get { return m_corpseserial; } }
 
-            private int m_itemserial;
+            private readonly int m_itemserial;
             public int ItemSerial { get { return m_itemserial; } }
 
             public int DestContainerOverride { get; set; }
@@ -104,23 +108,23 @@ namespace RazorEnhanced
 
         internal class AutoLootList
         {
-            private string m_Description;
+            private readonly string m_Description;
             internal string Description { get { return m_Description; } }
 
-            private int m_Delay;
+            private readonly int m_Delay;
             internal int Delay { get { return m_Delay; } }
 
-            private int m_Range;
+            private readonly int m_Range;
             internal int Range { get { return m_Range; } }
 
-            private int m_Bag;
+            private readonly int m_Bag;
             internal int Bag { get { return m_Bag; } }
 
-            private bool m_Selected;
+            private readonly bool m_Selected;
             [JsonProperty("Selected")]
             internal bool Selected { get { return m_Selected; } }
 
-            private bool m_Noopencorpse;
+            private readonly bool m_Noopencorpse;
             internal bool NoOpenCorpse { get { return m_Noopencorpse; } }
 
             public AutoLootList(string description, int delay, int bag, bool selected, bool noopencorpse, int range)
@@ -233,13 +237,20 @@ namespace RazorEnhanced
         {
             List<AutoLootList> lists = Settings.AutoLoot.ListsRead();
 
-            Assistant.Engine.MainWindow.AutoLootDataGridView.Rows.Clear();
-
             foreach (AutoLootList l in lists)
             {
                 if (l.Selected)
                 {
-                    Dictionary<int, List<AutoLoot.AutoLootItem>> items = Settings.AutoLoot.ItemsRead(l.Description);
+                    InitGrid(l.Description);
+                    break;
+                }
+            }
+        }
+
+        internal static void InitGrid(string listName)
+        {
+            Assistant.Engine.MainWindow.AutoLootDataGridView.Rows.Clear();
+                    Dictionary<int, List<AutoLoot.AutoLootItem>> items = Settings.AutoLoot.ItemsRead(listName);
                     foreach (KeyValuePair<int, List<AutoLoot.AutoLootItem>> entry in items)
                     {
                         foreach (AutoLootItem item in entry.Value)
@@ -251,16 +262,11 @@ namespace RazorEnhanced
                             string itemid = "All";
                             if (item.Graphics != -1)
                                 itemid = "0x" + item.Graphics.ToString("X4");
-
-                            string lootBag = "0x0";
-                            lootBag = "0x" + item.LootBagOverride.ToString("X4");
+                            string lootBag = "0x" + item.LootBagOverride.ToString("X4");
 
                             Assistant.Engine.MainWindow.AutoLootDataGridView.Rows.Add(new object[] { item.Selected.ToString(), item.Name, itemid, color, lootBag, item.Properties });
                         }
                     }
-                    break;
-                }
-            }
         }
 
         internal static void CopyTable()
@@ -274,7 +280,7 @@ namespace RazorEnhanced
                 if (row.IsNewRow)
                     continue;
 
-                int color = 0;
+                int color;
                 if ((string)row.Cells[3].Value == "All")
                     color = -1;
                 else
@@ -282,14 +288,12 @@ namespace RazorEnhanced
 
                 bool.TryParse(row.Cells[0].Value.ToString(), out bool check);
 
-                int itemID = 0;
+                int itemID;
                 if ((string)row.Cells[2].Value == "All")
                     itemID = -1;
                 else
                     itemID = Convert.ToInt32((string)row.Cells[2].Value, 16);
-
-                int lootbagOverride = 0;
-                lootbagOverride = Convert.ToInt32((string)row.Cells[4].Value, 16);
+                int lootbagOverride = Convert.ToInt32((string)row.Cells[4].Value, 16);
 
 
                 if (row.Cells[5].Value != null)
@@ -320,7 +324,7 @@ namespace RazorEnhanced
                 if (row.IsNewRow)
                     continue;
 
-                int color = 0;
+                int color;
                 if ((string)row.Cells[3].Value == "All")
                     color = -1;
                 else
@@ -374,6 +378,7 @@ namespace RazorEnhanced
         }
         internal static void Engine(Dictionary<int, List<AutoLootItem>> autoLootList, int mseconds, Items.Filter filter)
         {
+            //TODO: msecond it's unused
             List<Item> corpi = RazorEnhanced.Items.ApplyFilter(filter);
 
             if (World.Player != null && World.Player.IsGhost)
@@ -503,7 +508,7 @@ namespace RazorEnhanced
                 SerialToGrabList.Enqueue(data);
         }
 
-        private static Items.Filter m_corpsefilter = new Items.Filter
+        private static readonly Items.Filter m_corpsefilter = new Items.Filter
         {
             Movable = -1,
             IsCorpse = 1,
@@ -524,13 +529,17 @@ namespace RazorEnhanced
                 m_corpsefilter.RangeMax = m_maxrange;
                 Engine(Settings.AutoLoot.ItemsRead(m_autolootlist), m_lootdelay, m_corpsefilter);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 //  If anything goes wrong just continue on
             }
         }
 
         // Funzioni di controllo da script
+
+        /// <summary>
+        /// Reset the Autoloot ignore list.
+        /// </summary>
         public static void ResetIgnore()
         {
             m_IgnoreCorpseList.Clear();
@@ -539,7 +548,13 @@ namespace RazorEnhanced
             Scavenger.ResetIgnore();
         }
 
-        public static void RunOnce(string lootListName, int mseconds, Items.Filter filter)
+        /// <summary>
+        /// Start Autoloot with custom parameters.
+        /// </summary>
+        /// <param name="lootListName">Name of the Autoloot listfilter for search on ground.</param>
+        /// <param name="millisec">Delay in milliseconds. (unused)</param>
+        /// <param name="filter">Item filter</param>
+        public static void RunOnce(string lootListName, int millisec, Items.Filter filter)
         {
             if (Assistant.Engine.MainWindow.AutolootCheckBox.Checked == true)
             {
@@ -549,7 +564,7 @@ namespace RazorEnhanced
         Dictionary<int, List<AutoLootItem>> autoLootList = Settings.AutoLoot.ItemsRead(lootListName);
         if (autoLootList.Count > 0)
             {
-                Engine(autoLootList, mseconds, filter);
+                Engine(autoLootList, millisec, filter);
                 uint lootbag = GetLootBag();
                 // at login, backpack is sometimes null
                 if (lootbag != 0)
@@ -561,17 +576,29 @@ namespace RazorEnhanced
             }
         }
 
-        // Note: This can be controlled by script but does not persist the change.
-        // Only if the check box is manually changed is the change persisted
-        public static bool SetNoOpenCorpse(bool value)
+        
+
+        /// <summary>
+        /// Toggle "No Open Corpse" on/off. The change doesn't persist if you reopen razor.
+        /// </summary>
+        /// <param name="noOpen">True: "No Open Corpse" is active - False: otherwise</param>
+        /// <returns>Previous value of "No Open Corpse"</returns>
+        public static bool SetNoOpenCorpse(bool noOpen)
         {
+            // Note: This can be controlled by script but does not persist the change.
+            // Only if the check box is manually changed is the change persisted
             bool oldValue = m_noopencorpse;
-            m_noopencorpse = value;
-            Assistant.Engine.MainWindow.SafeAction(s => s.AutoLootNoOpenCheckBox.Checked = value);
+            m_noopencorpse = noOpen;
+            Assistant.Engine.MainWindow.SafeAction(s => s.AutoLootNoOpenCheckBox.Checked = noOpen);
             return oldValue;
         }
 
 
+        /// <summary>
+        /// Given an AutoLoot list name, return a list of AutoLootItem associated.
+        /// </summary>
+        /// <param name="lootListName">Name of the AutoLoot list.</param>
+        /// <returns></returns>
         public static List<AutoLootItem> GetList(string lootListName)
         {
             if (Settings.AutoLoot.ListExists(lootListName)) {
@@ -590,14 +617,22 @@ namespace RazorEnhanced
             return null;
         }
 
+        /// <summary>
+        /// @nodoc
+        /// </summary>
         static bool lootChangeMsgSent = false;
+
+        /// <summary>
+        /// Get current Autoloot destination container.
+        /// </summary>
+        /// <returns>Serial of the container.</returns>
         public static uint GetLootBag()
         {
             // Check bag
             Assistant.Item bag = Assistant.World.FindItem(AutoLoot.AutoLootBag);
             if (bag != null)
             {
-                if (bag.RootContainer != World.Player)
+                if (! bag.IsLootableTarget)
                 {
                     if (!lootChangeMsgSent)
                     {
@@ -630,6 +665,9 @@ namespace RazorEnhanced
             return bag.Serial.Value;
         }
 
+        /// <summary>
+        /// Start the Autoloot Agent on the currently active list.
+        /// </summary>
         public static void Start()
         {
             if (Assistant.Engine.MainWindow.AutolootCheckBox.Checked == true)
@@ -640,6 +678,9 @@ namespace RazorEnhanced
             }
         }
 
+        /// <summary>
+        /// Stop the Autoloot Agent.
+        /// </summary>
         public static void Stop()
         {
             if (Assistant.Engine.MainWindow.AutolootCheckBox.Checked == false)
@@ -648,10 +689,19 @@ namespace RazorEnhanced
                 Assistant.Engine.MainWindow.SafeAction(s => s.AutolootCheckBox.Checked = false);
         }
 
+        /// <summary>
+        /// Check Autoloot Agent status
+        /// </summary>
+        /// <returns>True: if the Autoloot is running - False: otherwise</returns>
         public static bool Status()
         {
             return Assistant.Engine.MainWindow.AutolootCheckBox.Checked;
         }
+
+        /// <summary>
+        /// Change the Autoloot's active list.
+        /// </summary>
+        /// <param name="listName">Name of an existing organizer list.</param>
 
         public static void ChangeList(string listName)
         {
@@ -665,12 +715,12 @@ namespace RazorEnhanced
                 if (Assistant.Engine.MainWindow.AutolootCheckBox.Checked == true) // If it is running force stop list change and restart
                 {
                     Assistant.Engine.MainWindow.SafeAction(s => s.AutolootCheckBox.Checked = false);
-                    Assistant.Engine.MainWindow.SafeAction(s => s.AutoLootListSelect.SelectedIndex = s.AutoLootListSelect.Items.IndexOf(listName)); // Change list
+                    Assistant.Engine.MainWindow.SafeAction(s => { s.AutoLootListSelect.SelectedIndex = s.AutoLootListSelect.Items.IndexOf(listName); InitGrid(listName); }); // Change list
                     Assistant.Engine.MainWindow.SafeAction(s => s.AutolootCheckBox.Checked = true);
                 }
                 else
                 {
-                    Assistant.Engine.MainWindow.SafeAction(s => s.AutoLootListSelect.SelectedIndex = s.AutoLootListSelect.Items.IndexOf(listName));  // Change List
+                    Assistant.Engine.MainWindow.SafeAction(s => { s.AutoLootListSelect.SelectedIndex = s.AutoLootListSelect.Items.IndexOf(listName); InitGrid(listName); });  // Change List
                 }
             }
         }
@@ -691,7 +741,7 @@ namespace RazorEnhanced
         }
 
         // Autostart al login
-        private static Assistant.Timer m_autostart = Assistant.Timer.DelayedCallback(TimeSpan.FromSeconds(3.0), new Assistant.TimerCallback(Start));
+        private static readonly Assistant.Timer m_autostart = Assistant.Timer.DelayedCallback(TimeSpan.FromSeconds(3.0), new Assistant.TimerCallback(Start));
 
         internal static void LoginAutostart()
         {

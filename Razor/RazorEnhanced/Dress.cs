@@ -38,19 +38,19 @@ namespace RazorEnhanced
 
 		internal class DressList
 		{
-			private string m_Description;
+			private readonly string m_Description;
 			internal string Description { get { return m_Description; } }
 
-			private int m_Delay;
+			private readonly int m_Delay;
 			internal int Delay { get { return m_Delay; } }
 
-			private int m_Bag;
+			private readonly int m_Bag;
 			internal int Bag { get { return m_Bag; } }
 
-			private bool m_Conflict;
+			private readonly bool m_Conflict;
 			internal bool Conflict { get { return m_Conflict; } }
 
-			private bool m_Selected;
+			private readonly bool m_Selected;
 			[JsonProperty("Selected")]
 			internal bool Selected { get { return m_Selected; } }
 
@@ -150,7 +150,7 @@ namespace RazorEnhanced
 		{
 			RazorEnhanced.Settings.Dress.ListInsert(newList, RazorEnhanced.Dress.DressDelay, (int)0, false);
 			RazorEnhanced.Dress.RefreshLists();
-			RazorEnhanced.Dress.RefreshItems();
+			RazorEnhanced.Dress.InitGrid();
 		}
 
 		internal static void RemoveList(string list)
@@ -161,7 +161,7 @@ namespace RazorEnhanced
 			}
 
 			RazorEnhanced.Dress.RefreshLists();
-			RazorEnhanced.Dress.RefreshItems();
+			RazorEnhanced.Dress.InitGrid();
 		}
 
 		internal static void UpdateSelectedItems(int i)
@@ -183,40 +183,48 @@ namespace RazorEnhanced
 			}
 		}
 
-		internal static void RefreshItems()
+		internal static void InitGrid()
 		{
 			List<DressList> lists = Settings.Dress.ListsRead();
-			Assistant.Engine.MainWindow.DressListView.Items.Clear();
 			foreach (DressList l in lists)
 			{
-				if (!l.Selected)
-					continue;
-
-				List<Dress.DressItemNew> items = RazorEnhanced.Settings.Dress.ItemsRead(l.Description);
-
-				foreach (DressItemNew item in items)
-				{
-					ListViewItem listitem = new ListViewItem
-					{
-						Checked = item.Selected
-					};
-					listitem.SubItems.Add(item.Layer.ToString());
-					if (item.Name != "UNDRESS")
-					{
-						listitem.SubItems.Add(item.Name);
-						listitem.SubItems.Add("0x" + item.Serial.ToString("X8"));
-					}
-					else
-					{
-						listitem.SubItems.Add("UNDRESS");
-						listitem.SubItems.Add("UNDRESS");
-					}
-					Assistant.Engine.MainWindow.DressListView.Items.Add(listitem);
-				}
+                if (l.Selected)
+                {
+                    InitGrid(l.Description);
+                    break;
+                }
 			}
 		}
 
-		internal static void ReadPlayerDress()
+        internal static void InitGrid(string listName)
+        {
+            Assistant.Engine.MainWindow.DressListView.Items.Clear();
+            List<Dress.DressItemNew> items = RazorEnhanced.Settings.Dress.ItemsRead(listName);
+
+            foreach (DressItemNew item in items)
+            {
+                ListViewItem listitem = new ListViewItem
+                {
+                    Checked = item.Selected
+                };
+                listitem.SubItems.Add(item.Layer.ToString());
+                if (item.Name != "UNDRESS")
+                {
+                    listitem.SubItems.Add(item.Name);
+                    listitem.SubItems.Add("0x" + item.Serial.ToString("X8"));
+                }
+                else
+                {
+                    listitem.SubItems.Add("UNDRESS");
+                    listitem.SubItems.Add("UNDRESS");
+                }
+                Assistant.Engine.MainWindow.DressListView.Items.Add(listitem);
+            }
+        }
+
+
+
+        internal static void ReadPlayerDress()
 		{
 			if (World.Player == null) // non loggato
 			{
@@ -236,7 +244,7 @@ namespace RazorEnhanced
 				RazorEnhanced.Settings.Dress.ItemInsert(Assistant.Engine.MainWindow.DressListSelect.Text, itemtoinsert);
 			}
 
-			RazorEnhanced.Dress.RefreshItems();
+			RazorEnhanced.Dress.InitGrid();
 		}
 
 		internal static void AddItemByTarger(Assistant.Item dressItem)
@@ -245,7 +253,7 @@ namespace RazorEnhanced
 			{
 				RazorEnhanced.Dress.DressItemNew toinsert = new RazorEnhanced.Dress.DressItemNew(dressItem.Name, dressItem.Layer, dressItem.Serial, true);
 				RazorEnhanced.Settings.Dress.ItemInsertByLayer(Assistant.Engine.MainWindow.DressListSelect.Text, toinsert);
-				RazorEnhanced.Dress.RefreshItems();
+				RazorEnhanced.Dress.InitGrid();
 			}
 			else
 				Misc.SendMessage("This item not have valid layer", false);
@@ -660,9 +668,13 @@ namespace RazorEnhanced
 			}
 		}
 
-		// Funzioni da script
+        // Funzioni da script
 
-		public static bool DressStatus()
+        /// <summary>
+        /// Check Dress Agent status, returns a bool value.
+        /// </summary>
+        /// <returns>True: is running - False: otherwise</returns>
+        public static bool DressStatus()
 		{
 			if (m_DressThread != null && m_DressThread.ThreadState != ThreadState.Stopped)
 				return true;
@@ -670,6 +682,10 @@ namespace RazorEnhanced
 				return false;
 		}
 
+        /// <summary>
+        /// Check UnDress Agent status, returns a bool value.
+        /// </summary>
+        /// <returns>True: is running - False: otherwise</returns>
 		public static bool UnDressStatus()
 		{
 			if (m_UndressThread != null && m_UndressThread.ThreadState != ThreadState.Stopped)
@@ -678,6 +694,9 @@ namespace RazorEnhanced
 				return false;
 		}
 
+        /// <summary>
+        /// Start Dress engine.
+        /// </summary>
 		public static void DressFStart()
 		{
 			if (Assistant.Engine.MainWindow.DressExecuteButton.Enabled == true)
@@ -688,6 +707,9 @@ namespace RazorEnhanced
 			}
 		}
 
+        /// <summary>
+        /// Start UnDress engine.
+        /// </summary>
 		public static void UnDressFStart()
 		{
 			if (Assistant.Engine.MainWindow.UnDressExecuteButton.Enabled == true)
@@ -698,7 +720,10 @@ namespace RazorEnhanced
 			}
 		}
 
-		public static void DressFStop()
+        /// <summary>
+        /// Stop Dress engine.
+        /// </summary>
+        public static void DressFStop()
 		{
 			if (Assistant.Engine.MainWindow.DressStopButton.Enabled == true)
 				Assistant.Engine.MainWindow.DressStop();
@@ -708,6 +733,9 @@ namespace RazorEnhanced
 			}
 		}
 
+        /// <summary>
+        /// Stop UnDress engine.
+        /// </summary>
 		public static void UnDressFStop()
 		{
 			if (Assistant.Engine.MainWindow.DressStopButton.Enabled == true)
@@ -718,23 +746,28 @@ namespace RazorEnhanced
 			}
 		}
 
-		public static void ChangeList(string listName)
+
+        /// <summary>
+        /// Change dress list, List must be exist in dress/undress Agent tab.
+        /// </summary>
+        /// <param name="dresslist">Name of the list of friend.</param>
+		public static void ChangeList(string dresslist)
 		{
-			if (!UpdateListParam(listName))
+			if (!UpdateListParam(dresslist))
 			{
-				Scripts.SendMessageScriptError("Script Error: Dress.ChangeList: Scavenger list: " + listName + " not exist");
+				Scripts.SendMessageScriptError("Script Error: Dress.ChangeList: Scavenger list: " + dresslist + " not exist");
 			}
 			else
 			{
 				if (Assistant.Engine.MainWindow.DressStopButton.Enabled == true) // Se è in esecuzione forza stop change list e restart
 				{
 					Engine.MainWindow.SafeAction(s => s.DressStopButton.PerformClick());
-					Engine.MainWindow.SafeAction(s => s.DressListSelect.SelectedIndex = s.DressListSelect.Items.IndexOf(listName));  // change list
+					Engine.MainWindow.SafeAction(s => { s.DressListSelect.SelectedIndex = s.DressListSelect.Items.IndexOf(dresslist); InitGrid(dresslist); });  // change list
 					Engine.MainWindow.SafeAction(s => s.DressExecuteButton.PerformClick());
 				}
 				else
 				{
-					Engine.MainWindow.SafeAction(s => s.DressListSelect.SelectedIndex = s.DressListSelect.Items.IndexOf(listName));  // change list
+					Engine.MainWindow.SafeAction(s => { s.DressListSelect.SelectedIndex = s.DressListSelect.Items.IndexOf(dresslist); InitGrid(dresslist); });  // change list
 				}
 			}
 		}

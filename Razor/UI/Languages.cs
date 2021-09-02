@@ -559,8 +559,8 @@ namespace Assistant
 
     public class Language
     {
-        private static Hashtable m_Controls;
-        private static Hashtable m_Strings;
+        private static readonly Hashtable m_Controls;
+        private static readonly Hashtable m_Strings;
         private static Ultima.StringList m_CliLoc = null;
         private static bool m_Loaded = false;
         private static string m_Current;
@@ -771,7 +771,7 @@ namespace Assistant
             {
                 StringBuilder sb = new StringBuilder();
 
-                sb.AppendFormat("UOF Assistant encountered errors on the following lines while loading the file '{0}'\r\n",
+                sb.AppendFormat("Razor enountered errors on the following lines while loading the file '{0}'\r\n",
                     filename);
                 for (int i = 0; i < errors.Count; i++)
                     sb.AppendFormat("Line {0}\r\n", errors[i]);

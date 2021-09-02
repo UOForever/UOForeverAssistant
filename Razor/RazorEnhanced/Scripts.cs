@@ -13,6 +13,9 @@ using System.Windows.Forms;
 using Microsoft.Scripting;
 using IronPython.Runtime;
 using IronPython.Compiler;
+using System.CodeDom.Compiler;
+using System.Reflection;
+using Microsoft.CSharp;
 
 namespace RazorEnhanced
 {
@@ -47,6 +50,7 @@ namespace RazorEnhanced
             public Keys Hotkey { get; set; }
             public bool HotKeyPass { get; set; }
             public bool AutoStart { get; set; }
+            public string FullPath { get; set; }
         }
 
 
@@ -95,31 +99,51 @@ namespace RazorEnhanced
 
 			private void AsyncStart()
 			{
-
-
 				if (World.Player == null)
 					return;
 
                 try
                 {
-                    string fullpath = Path.Combine(Assistant.Engine.RootPath, "Scripts", m_Filename);
+                    string fullpath = Settings.GetFullPathForScript(m_Filename);
                     string ext = Path.GetExtension(fullpath);
-                    if (ext.Equals(".uos", StringComparison.InvariantCultureIgnoreCase))
+
+					if (ext.Equals(".cs", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        UOSteamEngine uosteam = UOSteamEngine.Instance;
+						CSharpEngine csharpEngine = CSharpEngine.Instance;
+                        bool compileErrors = csharpEngine.CompileFromFile(fullpath, true, out StringBuilder compileMessages, out Assembly assembly);
+						if (compileMessages.Length > 0)
+                        {
+							Misc.SendMessage(compileMessages.ToString());
+						}
+						if (compileErrors == true)
+                        {
+							Stop();
+							return;
+						} 
+						csharpEngine.Execute(assembly);
+					}
+                    else if (ext.Equals(".uos", StringComparison.InvariantCultureIgnoreCase))
+                    {
+						// Using // only will be deprecated instead of //UOS
+						var text = System.IO.File.ReadAllLines(fullpath);
+						if ((text[0].Substring(0, 2) == "//") && text[0].Length < 5)
+						{
+							string message = "WARNING: // header for UOS scripts is going to be deprecated. Please use //UOS instead";
+							Misc.SendMessage(message);
+						}
+
+						UOSteamEngine uosteam = UOSteamEngine.Instance;
                         uosteam.Execute(fullpath);
                     }
                     else
                     {
-
                         DateTime lastModified = System.IO.File.GetLastWriteTime(fullpath);
                         if (FileChangeDate < lastModified)
                         {
-                            ReadText();
+                            ReadText(fullpath);
                             FileChangeDate = System.IO.File.GetLastWriteTime(fullpath);
                             Create(null);
                         }
-
 
                         /*Dalamar: BEGIN "fix python env" */
                         //EXECUTION OF THE SCRIPT
@@ -133,15 +157,17 @@ namespace RazorEnhanced
                         pco.ModuleName = "__main__";
                         pco.Module |= ModuleOptions.Initialize;
                         CompiledCode compiled = m_Source.Compile(pco);
-                        compiled.Execute(m_Scope);
+						Journal journal = m_Engine.Runtime.Globals.GetVariable("Journal") as Journal;
+						journal.Active = true;
+						compiled.Execute(m_Scope);
+						journal.Active = false;
+						// "-": DONT execute directly, unless you are not planning to import external modules.
+						//m_Source.Execute(m_Scope);
 
-                        // "-": DONT execute directly, unless you are not planning to import external modules.
-                        //m_Source.Execute(m_Scope);
-
-                        /*Dalamar: END*/
-                    }
-                }
-                catch (IronPython.Runtime.Exceptions.SystemExitException ex)
+						/*Dalamar: END*/
+					}
+				}
+                catch (IronPython.Runtime.Exceptions.SystemExitException)
                 {
                     Stop();
                     // sys.exit - terminate the thread
@@ -152,7 +178,7 @@ namespace RazorEnhanced
                         return;
 
                     string display_error = ex.Message;
-                    if ( m_Engine != null ) { 
+                    if ( m_Engine != null ) {
                         display_error = m_Engine.GetService<ExceptionOperations>().FormatException(ex);
                     }
                     SendMessageScriptError("ERROR " + m_Filename + ":" + display_error.Replace("\n", " | "));
@@ -195,9 +221,9 @@ namespace RazorEnhanced
                 }
 			}
 
-            internal void ReadText()
+            internal void ReadText(string fullpath)
             {
-                string fullpath = Path.Combine(Assistant.Engine.RootPath, "Scripts", m_Filename);
+                //string fullpath = Path.Combine(Assistant.Engine.RootPath, "Scripts", m_Filename);
                 if (File.Exists(fullpath))
                 {
                     m_Text = File.ReadAllText(fullpath);
@@ -234,7 +260,7 @@ namespace RazorEnhanced
 					m_Scope = m_pe.scope;
 
                     var pc = Microsoft.Scripting.Hosting.Providers.HostingHelpers.GetLanguageContext(m_Engine) as PythonContext;
-                    var hooks = pc.SystemState.Get__dict__()["path_hooks"] as List;
+                    PythonDictionary hooks = (PythonDictionary)pc.SystemState.Get__dict__()["path_hooks"];
                     hooks.Clear();
 
                     if (traceFunc != null)
@@ -270,7 +296,7 @@ namespace RazorEnhanced
 				}
 			}
 
-			private string m_Filename;
+			private readonly string m_Filename;
 			internal string Filename
 			{
 				get
@@ -296,7 +322,7 @@ namespace RazorEnhanced
 
 			private Thread m_Thread;
 
-			private bool m_Wait;
+			private readonly bool m_Wait;
 			internal bool Wait
 			{
 				get
@@ -365,7 +391,7 @@ namespace RazorEnhanced
 				}
 			}
 
-			private object m_Lock = new object();
+			private readonly object m_Lock = new object();
 
 			internal bool IsRunning
 			{
@@ -641,7 +667,7 @@ namespace RazorEnhanced
 		private static ScriptTimer m_Timer = new ScriptTimer();
 		internal static ScriptTimer Timer { get { return m_Timer; } }
 
-		private static ConcurrentDictionary<string, EnhancedScript> m_EnhancedScripts = new ConcurrentDictionary<string, EnhancedScript>();
+		private static readonly ConcurrentDictionary<string, EnhancedScript> m_EnhancedScripts = new ConcurrentDictionary<string, EnhancedScript>();
 		internal static ConcurrentDictionary<string, EnhancedScript> EnhancedScripts { get { return m_EnhancedScripts; } }
 
 		public static void Initialize()
@@ -660,9 +686,6 @@ namespace RazorEnhanced
 
         static void ScriptChanged(object sender, FileSystemEventArgs e)
         {
-            string fullPath = e.FullPath;
-            string filename = e.Name;
-            string onlyFilename = Path.GetFileName(fullPath);
             foreach (KeyValuePair<string, EnhancedScript> pair in EnhancedScripts)
             {
                 //if (String.Compare(pair.Key.ToLower(), filename.ToLower()) == 0)
@@ -670,7 +693,7 @@ namespace RazorEnhanced
             }
         }
 
-        static System.IO.FileSystemWatcher Watcher = SetupFileWatcher();
+        static readonly System.IO.FileSystemWatcher Watcher = SetupFileWatcher();
 
         static System.IO.FileSystemWatcher SetupFileWatcher()
         {
